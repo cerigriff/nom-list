@@ -341,7 +341,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v1.6</div>
+          <div class="setting-sub">Nom List v1.7</div>
         </div>
       </div>
     </div>
@@ -571,15 +571,15 @@ function renderRecipes() {
         <div class="recipe-name">${esc(r.name)}</div>
         <div class="recipe-meta">${r.tags?.length ? r.tags.join(', ') : ''}</div>
         <div class="serving-scaler" onclick="event.stopPropagation()">
-          <button class="scaler-btn" onclick="changeServings('${r.id}',-1)">−</button>
+          <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val">${scaled}</span>
-          <button class="scaler-btn" onclick="changeServings('${r.id}',1)">+</button>
+          <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',1)">+</button>
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
       </div>
       <div class="recipe-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn" onclick="togglePlan('${r.id}')" title="${inPlan ? 'Remove from this week' : 'Add to this week'}">${inPlan ? '✅' : '➕'}</button>
-        <button class="icon-btn" onclick="deleteRecipe('${r.id}')" title="Delete">🗑️</button>
+        <button class="icon-btn" onclick="event.stopPropagation();togglePlan('${r.id}')" title="${inPlan ? 'Remove from this week' : 'Add to this week'}">${inPlan ? '✅' : '➕'}</button>
+        <button class="icon-btn" onclick="event.stopPropagation();deleteRecipe('${r.id}')" title="Delete">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -642,14 +642,14 @@ function renderPlan() {
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
         <div class="serving-scaler" onclick="event.stopPropagation()">
-          <button class="scaler-btn" onclick="changeServings('${r.id}',-1)">−</button>
+          <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val">${scaled}</span>
-          <button class="scaler-btn" onclick="changeServings('${r.id}',1)">+</button>
+          <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',1)">+</button>
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
       </div>
       <div class="recipe-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn" onclick="togglePlan('${r.id}')" title="Remove from this week">❌</button>
+        <button class="icon-btn" onclick="event.stopPropagation();togglePlan('${r.id}')" title="Remove from this week">❌</button>
       </div>
     </div>`;
   }).join('');
