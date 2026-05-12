@@ -365,7 +365,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v2.2</div>
+          <div class="setting-sub">Nom List v2.3</div>
         </div>
       </div>
     </div>
@@ -409,7 +409,7 @@
       <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="3"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="parseWithAI()">
-          <span id="ai-btn-text">Parse with AI</span>
+          <span id="ai-btn-text">Send</span>
         </button>
         <button class="btn btn-secondary btn-sm" onclick="triggerCameraCapture()">
           📷 Scan recipe book
@@ -1079,7 +1079,7 @@ ${text}`;
     console.error(e);
     toast('AI parsing failed — check key or try again');
   } finally {
-    btn.textContent = 'Parse with AI';
+    btn.textContent = 'Send';
   }
 }
 
@@ -1154,7 +1154,7 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
       console.error(e);
       toast('Photo scan failed — check key or try again');
     } finally {
-      btn.textContent = 'Parse with AI';
+      btn.textContent = 'Send';
       // Reset file input so the same photo can be retried
       event.target.value = '';
     }
