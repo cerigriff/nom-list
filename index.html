@@ -46,6 +46,13 @@
       background: var(--surface-2);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea, select {
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     /* ── Layout ── */
@@ -275,8 +282,11 @@
   <!-- ── PLAN VIEW ── -->
   <div class="view" id="view-plan">
     <div class="page-header">
-      <h1>This Week 📅</h1>
-      <p id="plan-subtitle">Select the recipes you're making</p>
+      <h1>This Week 🗓️</h1>
+      <p id="plan-subtitle">Tap a recipe to add or remove it</p>
+    </div>
+    <div id="plan-controls" style="display:none; margin-bottom:12px;">
+      <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">🗑️ Clear this week</button>
     </div>
     <div id="plan-list"></div>
     <div id="plan-empty" class="empty" style="display:none">
@@ -300,7 +310,7 @@
     <div id="shop-empty" class="empty" style="display:none">
       <div class="emoji">🧺</div>
       <h2>Nothing here yet</h2>
-      <p>Select some recipes in the Plan tab to generate your list.</p>
+      <p>Select some recipes in the This Week tab to generate your list.</p>
     </div>
   </div>
 
@@ -309,34 +319,29 @@
     <div class="page-header">
       <h1>Settings ⚙️</h1>
     </div>
+
+    <!-- API Key card -->
     <div class="card">
-      <div class="setting-row">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleApiKeySection()">
         <div>
           <div class="setting-label">OpenAI API Key</div>
-          <div class="setting-sub">Used for AI recipe parsing</div>
+          <div class="setting-sub" id="apiKeyStatus">Checking…</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="setOpenAIKey()">Set key</button>
+        <div id="apiKeyChevron" style="font-size:18px;color:var(--text-3);transition:transform 0.2s">▼</div>
       </div>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Clear this week's plan</div>
-          <div class="setting-sub">Removes all selected recipes</div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">Clear</button>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">Clear all ticks</div>
-          <div class="setting-sub">Untick everything on shopping list</div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="clearTicks()">Clear</button>
+      <div id="apiKeySection" style="display:none;margin-top:14px">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:10px">Used for AI recipe parsing. Get yours at <strong>platform.openai.com</strong> → API keys.</p>
+        <input id="s-apikey" type="password" placeholder="sk-..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="width:100%;margin-bottom:10px" />
+        <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save key</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearApiKey()" id="clearKeyBtn" style="display:none">Remove key</button>
       </div>
     </div>
+
     <div class="card" style="margin-top:4px">
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v1.3</div>
+          <div class="setting-sub">Nom List v1.4</div>
         </div>
       </div>
     </div>
@@ -348,10 +353,10 @@
       <span class="icon">📚</span>Recipes
     </button>
     <button class="nav-btn" onclick="showView('plan')" id="nav-plan">
-      <span class="icon">📅</span>Plan
+      <span class="icon">🗓️</span>This Week
     </button>
     <button class="nav-btn" onclick="showView('shop')" id="nav-shop">
-      <span class="icon">🛒</span>Shop
+      <span class="icon">🛒</span>Shopping List
     </button>
     <button class="nav-btn" onclick="showView('settings')" id="nav-settings">
       <span class="icon">⚙️</span>Settings
@@ -554,8 +559,9 @@ function renderRecipes() {
     const thumb = r.photo
       ? `<img src="${r.photo}" alt="" />`
       : (r.emoji || '🍽️');
+    const inPlan = !!weekPlan[r.id];
     return `
-    <div class="recipe-card ${weekPlan[r.id] ? 'in-plan' : ''}" onclick="togglePlan('${r.id}')">
+    <div class="recipe-card ${inPlan ? 'in-plan' : ''}" onclick="openEditRecipe('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
@@ -566,10 +572,9 @@ function renderRecipes() {
           <button class="scaler-btn" onclick="changeServings('${r.id}',1)">+</button>
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
-        ${weekPlan[r.id] ? '<span class="plan-badge">In this week ✓</span>' : ''}
       </div>
       <div class="recipe-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn" onclick="openEditRecipe('${r.id}')" title="Edit">✏️</button>
+        <button class="icon-btn" onclick="togglePlan('${r.id}')" title="${inPlan ? 'Remove from this week' : 'Add to this week'}">${inPlan ? '✅' : '➕'}</button>
         <button class="icon-btn" onclick="deleteRecipe('${r.id}')" title="Delete">🗑️</button>
       </div>
     </div>`;
@@ -601,16 +606,20 @@ function updatePlanBadge() {
 // PLAN VIEW
 // ════════════════════════════════════════════
 function renderPlan() {
-  const list   = document.getElementById('plan-list');
-  const empty  = document.getElementById('plan-empty');
-  const all    = Object.values(recipes);
+  const list     = document.getElementById('plan-list');
+  const empty    = document.getElementById('plan-empty');
+  const controls = document.getElementById('plan-controls');
+  const all      = Object.values(recipes);
+  const planned  = all.filter(r => weekPlan[r.id]);
 
   if (all.length === 0) {
     list.innerHTML = '';
     empty.style.display = 'block';
+    controls.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
+  controls.style.display = planned.length > 0 ? 'block' : 'none';
 
   list.innerHTML = all.map(r => {
     const scaled = getScaledServings(r.id, r.servings);
@@ -1045,15 +1054,39 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
   reader.readAsDataURL(file);
 }
 
-function setOpenAIKey() {
-  const current = localStorage.getItem('openai_key') ? '(already set)' : '';
-  const key = prompt(`Enter your OpenAI API key ${current}\n(starts with sk-...)`);
-  if (key?.startsWith('sk-')) {
-    localStorage.setItem('openai_key', key.trim());
+function updateApiKeyStatus() {
+  const key = localStorage.getItem('openai_key');
+  document.getElementById('apiKeyStatus').textContent = key ? '🔑 Key saved' : '⚠️ Not set';
+  const clearBtn = document.getElementById('clearKeyBtn');
+  if (clearBtn) clearBtn.style.display = key ? 'inline-flex' : 'none';
+  const input = document.getElementById('s-apikey');
+  if (input) input.value = key || '';
+}
+
+function toggleApiKeySection() {
+  const section = document.getElementById('apiKeySection');
+  const chevron = document.getElementById('apiKeyChevron');
+  const open = section.style.display === 'none';
+  section.style.display = open ? 'block' : 'none';
+  chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function saveApiKey() {
+  const val = document.getElementById('s-apikey').value.trim();
+  if (val.startsWith('sk-')) {
+    localStorage.setItem('openai_key', val);
+    updateApiKeyStatus();
     toast('API key saved ✓');
-  } else if (key !== null) {
+  } else {
     toast('Invalid key — must start with sk-');
   }
+}
+
+function clearApiKey() {
+  if (!confirm('Remove your API key?')) return;
+  localStorage.removeItem('openai_key');
+  updateApiKeyStatus();
+  toast('API key removed');
 }
 
 // ════════════════════════════════════════════
@@ -1088,6 +1121,7 @@ function esc(s) {
 
 // ── Boot ──
 initFirebase();
+updateApiKeyStatus();
 </script>
 
 <!-- Register service worker -->
