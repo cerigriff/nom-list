@@ -162,6 +162,31 @@
     .recipe-card.in-plan .recipe-thumb { background: var(--brand-light); }
     .plan-badge { font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 50px; margin-top: 4px; display: inline-block; }
 
+    /* Selection mode */
+    .recipe-card.selected { border: 2px solid var(--green); background: var(--green-light); }
+    .recipe-card.selected .recipe-thumb { background: var(--green-light); }
+    .select-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--surface); transition: all .15s; }
+    .recipe-card.selected .select-check { background: var(--green); border-color: var(--green); color: white; }
+
+    /* Add-to-week floating bar */
+    #add-to-week-bar {
+      position: fixed;
+      bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+      left: 50%; transform: translateX(-50%);
+      width: calc(100% - 32px); max-width: 448px;
+      background: var(--green); color: white;
+      border: none; border-radius: 50px;
+      padding: 14px 24px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(76,175,130,.45);
+      z-index: 98;
+      display: none;
+      align-items: center; justify-content: center; gap: 8px;
+      transition: opacity .2s;
+    }
+    #add-to-week-bar.visible { display: flex; }
+
     /* ── Shopping list ── */
     .shop-category { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin: 16px 0 8px; }
     .shop-item {
@@ -282,7 +307,7 @@
   <!-- ── PLAN VIEW ── -->
   <div class="view" id="view-plan">
     <div class="page-header">
-      <h1>This Week 🗓️</h1>
+      <h1>This Week 📋</h1>
       <p id="plan-subtitle">Tap a recipe to add or remove it</p>
     </div>
     <div id="plan-controls" style="display:none; margin-bottom:12px;">
@@ -341,7 +366,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v1.8</div>
+          <div class="setting-sub">Nom List v2.0</div>
         </div>
       </div>
     </div>
@@ -353,7 +378,7 @@
       <span class="icon">📚</span>Recipes
     </button>
     <button class="nav-btn" onclick="showView('plan')" id="nav-plan">
-      <span class="icon">🗓️</span>This Week
+      <span class="icon">📋</span>This Week
     </button>
     <button class="nav-btn" onclick="showView('shop')" id="nav-shop">
       <span class="icon">🛒</span>Shopping List
@@ -363,6 +388,11 @@
     </button>
   </nav>
 </div>
+
+<!-- ── ADD TO WEEK BAR ── -->
+<button id="add-to-week-bar" onclick="addSelectionToWeek()">
+  <span id="add-to-week-label">Add to This Week</span>
+</button>
 
 <!-- ── FAB ── -->
 <button class="fab" id="fab" onclick="openAddRecipe()">+</button>
@@ -465,6 +495,7 @@ let weekPlan = {};      // { recipeId: true }
 let haveIt = {};        // { itemKey: true }
 let scaledServings = {}; // { recipeId: number } — per-session serving overrides
 let currentView = 'recipes';
+let selectedRecipes = new Set(); // ids selected on Recipes page, cleared on nav away or after adding
 
 // ── Firebase init ──
 function initFirebase() {
@@ -485,13 +516,6 @@ function initFirebase() {
 }
 
 async function subscribeAll() {
-  // Load weekPlan once first so scaledServings is populated before recipes render
-  const planSnap = await db.collection('weekPlan').get();
-  planSnap.forEach(doc => {
-    weekPlan[doc.id] = true;
-    if (doc.data().servings) scaledServings[doc.id] = doc.data().servings;
-  });
-
   // Recipes
   db.collection('recipes').orderBy('name').onSnapshot(snap => {
     recipes = {};
@@ -501,12 +525,14 @@ async function subscribeAll() {
     renderShop();
   });
 
-  // Week plan (live updates after initial load)
+  // Week plan — restore scaledServings from Firestore without ever clearing it
   db.collection('weekPlan').onSnapshot(snap => {
     weekPlan = {};
     snap.forEach(doc => {
       weekPlan[doc.id] = true;
-      if (doc.data().servings) scaledServings[doc.id] = doc.data().servings;
+      const saved = doc.data().servings;
+      // Only restore if we don't already have an in-memory value (avoids overwriting mid-session changes)
+      if (saved && !scaledServings[doc.id]) scaledServings[doc.id] = saved;
     });
     renderPlan();
     renderShop();
@@ -523,6 +549,11 @@ async function subscribeAll() {
 
 // ── View routing ──
 function showView(name) {
+  // Clear selections when leaving recipes tab
+  if (currentView === 'recipes' && name !== 'recipes') {
+    selectedRecipes.clear();
+    updateAddToWeekBar();
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
@@ -569,22 +600,24 @@ function renderRecipes() {
     const thumb = r.photo
       ? `<img src="${r.photo}" alt="" />`
       : (r.emoji || '🍽️');
+    const selected = selectedRecipes.has(r.id);
     const inPlan = !!weekPlan[r.id];
     return `
-    <div class="recipe-card ${inPlan ? 'in-plan' : ''}" onclick="openEditRecipe('${r.id}')">
+    <div class="recipe-card ${selected ? 'selected' : (inPlan ? 'in-plan' : '')}" onclick="toggleSelection('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
-        <div class="recipe-meta">${r.tags?.length ? r.tags.join(', ') : ''}</div>
+        <div class="recipe-meta">${r.tags?.length ? r.tags.join(', ') : (inPlan ? '📋 In this week' : '')}</div>
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
-          <span class="scaler-val">${scaled}</span>
+          <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',1)">+</button>
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
       </div>
       <div class="recipe-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn" onclick="event.stopPropagation();togglePlan('${r.id}')" title="${inPlan ? 'Remove from this week' : 'Add to this week'}">${inPlan ? '✅' : '➕'}</button>
+        <div class="select-check">${selected ? '✓' : ''}</div>
+        <button class="icon-btn" onclick="event.stopPropagation();openEditRecipe('${r.id}')" title="Edit">✏️</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteRecipe('${r.id}')" title="Delete">🗑️</button>
       </div>
     </div>`;
@@ -594,6 +627,45 @@ function renderRecipes() {
 document.getElementById('recipe-search').addEventListener('input', renderRecipes);
 
 // ── Toggle recipe in/out of weekly plan ──
+// ── Selection (Recipes tab) ──
+function toggleSelection(id) {
+  if (selectedRecipes.has(id)) {
+    selectedRecipes.delete(id);
+  } else {
+    selectedRecipes.add(id);
+  }
+  updateAddToWeekBar();
+  renderRecipes();
+}
+
+function updateAddToWeekBar() {
+  const bar = document.getElementById('add-to-week-bar');
+  const n = selectedRecipes.size;
+  if (n === 0) {
+    bar.classList.remove('visible');
+  } else {
+    document.getElementById('add-to-week-label').textContent =
+      `Add ${n} recipe${n !== 1 ? 's' : ''} to This Week →`;
+    bar.classList.add('visible');
+  }
+}
+
+async function addSelectionToWeek() {
+  if (!db || selectedRecipes.size === 0) return;
+  const batch = db.batch();
+  selectedRecipes.forEach(id => {
+    if (!weekPlan[id]) { // skip if already in plan
+      batch.set(db.collection('weekPlan').doc(id), { added: new Date() });
+    }
+  });
+  await batch.commit();
+  const n = selectedRecipes.size;
+  selectedRecipes.clear();
+  updateAddToWeekBar();
+  renderRecipes();
+  toast(`Added to This Week ✓`);
+}
+
 async function togglePlan(id) {
   if (!db) { toast('Firebase not connected'); return; }
   if (weekPlan[id]) {
@@ -607,9 +679,8 @@ async function togglePlan(id) {
 
 function updatePlanBadge() {
   const n = Object.keys(weekPlan).length;
-  document.getElementById('nav-plan').querySelector('.icon').textContent = n > 0 ? '📅' : '📅';
   document.getElementById('plan-subtitle').textContent =
-    n === 0 ? 'No recipes selected' : `${n} recipe${n !== 1 ? 's' : ''} selected`;
+    n === 0 ? 'Tap recipes to select them, then add to This Week' : `${n} recipe${n !== 1 ? 's' : ''} this week`;
 }
 
 // ════════════════════════════════════════════
@@ -632,7 +703,7 @@ function renderPlan() {
   controls.style.display = planned.length > 0 ? 'block' : 'none';
 
   if (planned.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="emoji">🗓️</div><h2>Nothing planned yet</h2><p>Tap ➕ on a recipe to add it to this week.</p></div>`;
+    list.innerHTML = `<div class="empty"><div class="emoji">📋</div><h2>Nothing planned yet</h2><p>Tap ➕ on a recipe to add it to this week.</p></div>`;
     updatePlanBadge();
     return;
   }
@@ -649,7 +720,7 @@ function renderPlan() {
         <div class="recipe-name">${esc(r.name)}</div>
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
-          <span class="scaler-val">${scaled}</span>
+          <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',1)">+</button>
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
@@ -780,8 +851,9 @@ function changeServings(id, delta) {
   const current = getScaledServings(id, base);
   const next = Math.max(1, current + delta);
   scaledServings[id] = next;
-  renderRecipes();
-  renderPlan();
+  // Update just the scaler displays rather than full re-renders
+  document.querySelectorAll(`[data-scaler-id="${id}"]`).forEach(el => el.textContent = next);
+  renderShop();
   // Persist to Firestore if this recipe is in the plan
   if (db && weekPlan[id]) {
     db.collection('weekPlan').doc(id).update({ servings: next }).catch(() => {});
