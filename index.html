@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <title>Nom List 🍽️</title>
 
   <!-- PWA -->
@@ -157,8 +157,7 @@
     .scaler-val { font-size: 12px; font-weight: 600; color: var(--text); min-width: 20px; text-align: center; }
     .scaler-base { font-size: 11px; color: var(--text-3); }
 
-    /* Plan toggle */
-    .recipe-card.in-plan { border: 2px solid var(--brand); }
+    /* Plan toggle — subtle, just the thumb tint */
     .recipe-card.in-plan .recipe-thumb { background: var(--brand-light); }
     .plan-badge { font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 50px; margin-top: 4px; display: inline-block; }
 
@@ -180,7 +179,7 @@
       font-size: 16px; font-weight: 700;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(76,175,130,.45);
-      z-index: 98;
+      z-index: 100;
       display: none;
       align-items: center; justify-content: center; gap: 8px;
       transition: opacity .2s;
@@ -366,7 +365,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v2.0</div>
+          <div class="setting-sub">Nom List v2.1</div>
         </div>
       </div>
     </div>
@@ -468,6 +467,9 @@
       <button class="btn btn-primary btn-full" onclick="saveRecipe()">Save Recipe</button>
       <button class="btn btn-secondary" onclick="closeSheet('recipe-sheet')">Cancel</button>
     </div>
+    <div id="delete-recipe-row" style="display:none; margin-top:12px; text-align:center">
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
+    </div>
   </div>
 </div>
 
@@ -516,7 +518,15 @@ function initFirebase() {
 }
 
 async function subscribeAll() {
-  // Recipes
+  // Pre-load weekPlan so scaledServings is ready before recipes render
+  const planInit = await db.collection('weekPlan').get();
+  planInit.forEach(doc => {
+    weekPlan[doc.id] = true;
+    const saved = doc.data().servings;
+    if (saved) scaledServings[doc.id] = saved;
+  });
+
+  // Recipes — now safe to render, scaledServings already populated
   db.collection('recipes').orderBy('name').onSnapshot(snap => {
     recipes = {};
     snap.forEach(doc => recipes[doc.id] = { id: doc.id, ...doc.data() });
@@ -525,13 +535,12 @@ async function subscribeAll() {
     renderShop();
   });
 
-  // Week plan — restore scaledServings from Firestore without ever clearing it
+  // Week plan live updates — only update scaledServings if no in-memory override exists
   db.collection('weekPlan').onSnapshot(snap => {
     weekPlan = {};
     snap.forEach(doc => {
       weekPlan[doc.id] = true;
       const saved = doc.data().servings;
-      // Only restore if we don't already have an in-memory value (avoids overwriting mid-session changes)
       if (saved && !scaledServings[doc.id]) scaledServings[doc.id] = saved;
     });
     renderPlan();
@@ -615,10 +624,9 @@ function renderRecipes() {
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (base: ${r.servings})` : ''}</span>
         </div>
       </div>
-      <div class="recipe-actions" onclick="event.stopPropagation()">
-        <div class="select-check">${selected ? '✓' : ''}</div>
-        <button class="icon-btn" onclick="event.stopPropagation();openEditRecipe('${r.id}')" title="Edit">✏️</button>
-        <button class="icon-btn" onclick="event.stopPropagation();deleteRecipe('${r.id}')" title="Delete">🗑️</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0" onclick="event.stopPropagation()">
+        <div class="select-check" onclick="event.stopPropagation();toggleSelection('${r.id}')">${selected ? '✓' : ''}</div>
+        <button class="icon-btn" style="font-size:16px;padding:4px 8px" onclick="event.stopPropagation();openEditRecipe('${r.id}')" title="Edit">✏️</button>
       </div>
     </div>`;
   }).join('');
@@ -640,13 +648,16 @@ function toggleSelection(id) {
 
 function updateAddToWeekBar() {
   const bar = document.getElementById('add-to-week-bar');
+  const fab = document.getElementById('fab');
   const n = selectedRecipes.size;
   if (n === 0) {
     bar.classList.remove('visible');
+    fab.classList.remove('hidden');
   } else {
     document.getElementById('add-to-week-label').textContent =
       `Add ${n} recipe${n !== 1 ? 's' : ''} to This Week →`;
     bar.classList.add('visible');
+    fab.classList.add('hidden');
   }
 }
 
@@ -914,6 +925,7 @@ function openAddRecipe() {
   document.getElementById('f-tags').value = '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = '';
+  document.getElementById('delete-recipe-row').style.display = 'none';
   setPhotoPreview(null);
   renderIngredientRows([]);
   openSheet('recipe-sheet');
@@ -931,9 +943,18 @@ function openEditRecipe(id) {
   document.getElementById('f-tags').value = (r.tags || []).join(', ');
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = r.photo || '';
+  document.getElementById('delete-recipe-row').style.display = 'block';
   setPhotoPreview(r.photo || null);
   renderIngredientRows(r.ingredients || []);
   openSheet('recipe-sheet');
+}
+
+async function deleteCurrentRecipe() {
+  const id = document.getElementById('edit-id').value;
+  if (!id) return;
+  if (!confirm('Delete this recipe?')) return;
+  closeSheet('recipe-sheet');
+  await deleteRecipe(id);
 }
 
 function renderIngredientRows(ings) {
