@@ -365,7 +365,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v2.1</div>
+          <div class="setting-sub">Nom List v2.2</div>
         </div>
       </div>
     </div>
@@ -518,31 +518,25 @@ function initFirebase() {
 }
 
 async function subscribeAll() {
-  // Pre-load weekPlan so scaledServings is ready before recipes render
-  const planInit = await db.collection('weekPlan').get();
-  planInit.forEach(doc => {
-    weekPlan[doc.id] = true;
-    const saved = doc.data().servings;
-    if (saved) scaledServings[doc.id] = saved;
-  });
-
-  // Recipes — now safe to render, scaledServings already populated
+  // Recipes — load preferredServings into scaledServings so it's always ready
   db.collection('recipes').orderBy('name').onSnapshot(snap => {
     recipes = {};
-    snap.forEach(doc => recipes[doc.id] = { id: doc.id, ...doc.data() });
+    snap.forEach(doc => {
+      const data = { id: doc.id, ...doc.data() };
+      recipes[doc.id] = data;
+      // Restore preferred serving count (falls back to 2 if never set)
+      if (data.preferredServings) scaledServings[doc.id] = data.preferredServings;
+      else if (!scaledServings[doc.id]) scaledServings[doc.id] = 2;
+    });
     renderRecipes();
     renderPlan();
     renderShop();
   });
 
-  // Week plan live updates — only update scaledServings if no in-memory override exists
+  // Week plan
   db.collection('weekPlan').onSnapshot(snap => {
     weekPlan = {};
-    snap.forEach(doc => {
-      weekPlan[doc.id] = true;
-      const saved = doc.data().servings;
-      if (saved && !scaledServings[doc.id]) scaledServings[doc.id] = saved;
-    });
+    snap.forEach(doc => { weekPlan[doc.id] = true; });
     renderPlan();
     renderShop();
     updatePlanBadge();
@@ -605,7 +599,7 @@ function renderRecipes() {
   }
 
   list.innerHTML = filtered.map(r => {
-    const scaled = getScaledServings(r.id, r.servings);
+    const scaled = getScaledServings(r.id);
     const thumb = r.photo
       ? `<img src="${r.photo}" alt="" />`
       : (r.emoji || '🍽️');
@@ -720,7 +714,7 @@ function renderPlan() {
   }
 
   list.innerHTML = planned.map(r => {
-    const scaled = getScaledServings(r.id, r.servings);
+    const scaled = getScaledServings(r.id);
     const thumb = r.photo
       ? `<img src="${r.photo}" alt="" />`
       : (r.emoji || '🍽️');
@@ -755,8 +749,8 @@ function buildShoppingList() {
   for (const id of Object.keys(weekPlan)) {
     const recipe = recipes[id];
     if (!recipe?.ingredients) continue;
-    const base    = recipe.servings || 1;
-    const scaled  = getScaledServings(id, base);
+    const base    = recipe.servings || 4;
+    const scaled  = getScaledServings(id);
     const factor  = scaled / base;
     for (const ing of recipe.ingredients) {
       const key = normaliseKey(ing.name);
@@ -853,21 +847,20 @@ function copyList() {
 // ADD / EDIT RECIPE SHEET
 // ════════════════════════════════════════════
 // ── Serving scaler ──
-function getScaledServings(id, base) {
-  return scaledServings[id] ?? base ?? 4;
+function getScaledServings(id) {
+  return scaledServings[id] ?? 2;
 }
 
 function changeServings(id, delta) {
-  const base = recipes[id]?.servings ?? 4;
-  const current = getScaledServings(id, base);
+  const current = getScaledServings(id);
   const next = Math.max(1, current + delta);
   scaledServings[id] = next;
-  // Update just the scaler displays rather than full re-renders
+  // Update scaler displays in place
   document.querySelectorAll(`[data-scaler-id="${id}"]`).forEach(el => el.textContent = next);
   renderShop();
-  // Persist to Firestore if this recipe is in the plan
-  if (db && weekPlan[id]) {
-    db.collection('weekPlan').doc(id).update({ servings: next }).catch(() => {});
+  // Save preferredServings permanently to the recipe doc
+  if (db) {
+    db.collection('recipes').doc(id).update({ preferredServings: next }).catch(() => {});
   }
 }
 
