@@ -378,7 +378,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v2.7</div>
+          <div class="setting-sub">Nom List v2.8</div>
         </div>
       </div>
     </div>
@@ -565,16 +565,14 @@ async function subscribeAll() {
 
 // ── View routing ──
 function showView(name) {
-  // Clear selections when leaving recipes tab
-  if (currentView === 'recipes' && name !== 'recipes') {
-    selectedRecipes.clear();
-    updateAddToWeekBar();
-  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
-  document.getElementById('fab').classList.toggle('hidden', name !== 'recipes');
+  // Show FAB and add-to-week bar only on recipes tab
+  const onRecipes = name === 'recipes';
+  document.getElementById('fab').classList.toggle('hidden', !onRecipes || selectedRecipes.size > 0);
+  document.getElementById('add-to-week-bar').classList.toggle('visible', onRecipes && selectedRecipes.size > 0);
   currentView = name;
 
   if (name === 'plan') renderPlan();
