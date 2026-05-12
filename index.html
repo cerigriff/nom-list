@@ -378,7 +378,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v2.5</div>
+          <div class="setting-sub">Nom List v2.6</div>
         </div>
       </div>
     </div>
@@ -834,11 +834,7 @@ async function toggleHaveIt(key) {
     await db.collection('haveIt').doc(key).set({ ticked: new Date() });
     // Apply highlight class directly to the item without re-rendering the list
     const el = document.getElementById('item-' + key);
-    if (el) {
-      el.classList.add('pending-tick');
-      // Move it visually to top of list so it's clearly visible
-      el.parentNode.prepend(el);
-    }
+    if (el) el.classList.add('pending-tick');
     toast('Ticked off ✓', true);
   }
 }
