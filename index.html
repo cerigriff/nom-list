@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nom List 🍽️</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ff6b6b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Nom List" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <!-- Firebase SDK (modular compat build) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* ── Reset & tokens ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand:        #ff6b6b;
+      --brand-light:  #fff0f0;
+      --brand-dark:   #e05555;
+      --green:        #4caf82;
+      --green-light:  #edfaf3;
+      --surface:      #ffffff;
+      --surface-2:    #f7f7f8;
+      --border:       #ebebeb;
+      --text:         #1a1a1a;
+      --text-2:       #6b6b6b;
+      --text-3:       #a0a0a0;
+      --radius:       14px;
+      --radius-sm:    8px;
+      --shadow:       0 2px 12px rgba(0,0,0,.07);
+      --nav-h:        64px;
+      --safe-bottom:  env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--surface-2);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    #app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; }
+
+    .view { flex: 1; overflow-y: auto; padding: 16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px); display: none; }
+    .view.active { display: block; }
+
+    /* ── Bottom nav ── */
+    nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      height: calc(var(--nav-h) + var(--safe-bottom));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: var(--safe-bottom);
+      z-index: 100;
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 4px;
+      background: none; border: none; cursor: pointer;
+      font-size: 11px; color: var(--text-3); padding: 0;
+      transition: color .15s;
+    }
+    .nav-btn .icon { font-size: 24px; line-height: 1; }
+    .nav-btn.active { color: var(--brand); }
+
+    /* ── Page header ── */
+    .page-header { margin-bottom: 20px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; }
+    .page-header p { font-size: 14px; color: var(--text-2); margin-top: 4px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 12px 20px; border-radius: 50px; border: none;
+      font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s;
+    }
+    .btn:active { opacity: .8; }
+    .btn-primary { background: var(--brand); color: white; }
+    .btn-secondary { background: var(--surface-2); color: var(--text); }
+    .btn-ghost { background: none; color: var(--brand); padding: 8px 12px; }
+    .btn-danger { background: #fee; color: #c00; }
+    .btn-sm { font-size: 13px; padding: 8px 14px; }
+    .btn-full { width: 100%; }
+
+    /* ── Form elements ── */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-2); }
+    input[type=text], input[type=number], input[type=url], select, textarea {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 15px; font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+      outline: none; transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── Search bar ── */
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-wrap input { padding-left: 40px; }
+    .search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+
+    /* ── Recipe card ── */
+    .recipe-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: transform .1s;
+    }
+    .recipe-card:active { transform: scale(.98); }
+    .recipe-emoji { font-size: 36px; flex-shrink: 0; width: 52px; height: 52px; background: var(--brand-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .recipe-info { flex: 1; min-width: 0; }
+    .recipe-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recipe-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .recipe-actions { display: flex; gap: 4px; }
+    .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 6px; border-radius: 8px; }
+    .icon-btn:hover { background: var(--surface-2); }
+
+    /* Plan toggle */
+    .recipe-card.in-plan { border: 2px solid var(--brand); }
+    .recipe-card.in-plan .recipe-emoji { background: var(--brand-light); }
+    .plan-badge { font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 50px; margin-top: 4px; display: inline-block; }
+
+    /* ── Shopping list ── */
+    .shop-category { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin: 16px 0 8px; }
+    .shop-item {
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: 13px 16px;
+      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      transition: opacity .2s;
+    }
+    .shop-item.ticked { opacity: .4; }
+    .shop-item.ticked .item-name { text-decoration: line-through; }
+    .check-circle {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 2px solid var(--border); background: none;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .shop-item.ticked .check-circle { background: var(--green); border-color: var(--green); }
+    .check-circle::after { content: '✓'; color: white; font-size: 13px; font-weight: 700; display: none; }
+    .shop-item.ticked .check-circle::after { display: block; }
+    .item-name { font-size: 15px; font-weight: 500; flex: 1; }
+    .item-qty { font-size: 13px; color: var(--text-2); }
+
+    /* ── Sheet (modal) ── */
+    .sheet-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 200; display: none; align-items: flex-end;
+    }
+    .sheet-backdrop.open { display: flex; }
+    .sheet {
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      padding: 20px 20px calc(20px + var(--safe-bottom));
+      width: 100%; max-height: 90vh; overflow-y: auto;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+    .sheet-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+    /* ── Ingredient row in form ── */
+    .ingredient-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+    .ingredient-row input[type=text]:first-child { flex: 2; }
+    .ingredient-row input[type=number] { flex: 0 0 70px; }
+    .ingredient-row select { flex: 1; }
+    .remove-ing { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-3); padding: 10px 4px; }
+
+    /* ── AI paste area ── */
+    .ai-box { background: var(--brand-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    .ai-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .ai-box p { font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 60px 20px; }
+    .empty .emoji { font-size: 56px; margin-bottom: 12px; }
+    .empty h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .empty p { font-size: 14px; color: var(--text-2); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px); left: 50%; transform: translateX(-50%);
+      background: #222; color: white; padding: 10px 20px; border-radius: 50px;
+      font-size: 14px; font-weight: 500; z-index: 999;
+      opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px); right: 16px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--brand); color: white; border: none;
+      font-size: 28px; cursor: pointer; box-shadow: 0 4px 16px rgba(255,107,107,.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 99; transition: transform .15s;
+    }
+    .fab:active { transform: scale(.92); }
+    .fab.hidden { display: none; }
+
+    /* ── Spinner ── */
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Settings ── */
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 15px; font-weight: 500; }
+    .setting-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+    /* ── Config warning ── */
+    #config-warning {
+      background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius);
+      padding: 14px; margin-bottom: 16px; font-size: 13px; display: none;
+    }
+    #config-warning strong { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── RECIPES VIEW ── -->
+  <div class="view active" id="view-recipes">
+    <div class="page-header">
+      <h1>Recipes 📚</h1>
+      <p id="recipe-count">Loading…</p>
+    </div>
+    <div id="config-warning">
+      <strong>⚠️ Firebase not configured</strong>
+      Open index.html and fill in your Firebase config in the FIREBASE CONFIG section below.
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="recipe-search" placeholder="Search recipes…" />
+    </div>
+    <div id="recipe-list"></div>
+  </div>
+
+  <!-- ── PLAN VIEW ── -->
+  <div class="view" id="view-plan">
+    <div class="page-header">
+      <h1>This Week 📅</h1>
+      <p id="plan-subtitle">Select the recipes you're making</p>
+    </div>
+    <div id="plan-list"></div>
+    <div id="plan-empty" class="empty" style="display:none">
+      <div class="emoji">📭</div>
+      <h2>No recipes yet</h2>
+      <p>Add some recipes first, then pick your week's meals here.</p>
+    </div>
+  </div>
+
+  <!-- ── SHOPPING LIST VIEW ── -->
+  <div class="view" id="view-shop">
+    <div class="page-header">
+      <h1>Shopping List 🛒</h1>
+      <p id="shop-subtitle">Tap to tick off what you have</p>
+    </div>
+    <div id="shop-controls" style="display:none; margin-bottom:12px; display:flex; gap:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="clearTicks()">Untick all</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list 📋</button>
+    </div>
+    <div id="shop-list"></div>
+    <div id="shop-empty" class="empty" style="display:none">
+      <div class="emoji">🧺</div>
+      <h2>Nothing here yet</h2>
+      <p>Select some recipes in the Plan tab to generate your list.</p>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS VIEW ── -->
+  <div class="view" id="view-settings">
+    <div class="page-header">
+      <h1>Settings ⚙️</h1>
+    </div>
+    <div class="card">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">OpenAI API Key</div>
+          <div class="setting-sub">Used for AI recipe parsing</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="setOpenAIKey()">Set key</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Clear this week's plan</div>
+          <div class="setting-sub">Removes all selected recipes</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">Clear</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Clear all ticks</div>
+          <div class="setting-sub">Untick everything on shopping list</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="clearTicks()">Clear</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:4px">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">App version</div>
+          <div class="setting-sub">Nom List v1.0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav>
+    <button class="nav-btn active" onclick="showView('recipes')" id="nav-recipes">
+      <span class="icon">📚</span>Recipes
+    </button>
+    <button class="nav-btn" onclick="showView('plan')" id="nav-plan">
+      <span class="icon">📅</span>Plan
+    </button>
+    <button class="nav-btn" onclick="showView('shop')" id="nav-shop">
+      <span class="icon">🛒</span>Shop
+    </button>
+    <button class="nav-btn" onclick="showView('settings')" id="nav-settings">
+      <span class="icon">⚙️</span>Settings
+    </button>
+  </nav>
+</div>
+
+<!-- ── FAB ── -->
+<button class="fab" id="fab" onclick="openAddRecipe()">+</button>
+
+<!-- ── ADD / EDIT RECIPE SHEET ── -->
+<div class="sheet-backdrop" id="recipe-sheet" onclick="closeSheetOnBackdrop(event, 'recipe-sheet')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title">Add Recipe</div>
+
+    <!-- AI paste section -->
+    <div class="ai-box">
+      <h3>✨ AI Recipe Entry</h3>
+      <p>Paste a recipe URL or any recipe text, or take a photo of a recipe book page.</p>
+      <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="3"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="parseWithAI()">
+          <span id="ai-btn-text">Parse with AI</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="triggerCameraCapture()">
+          📷 Scan recipe book
+        </button>
+      </div>
+      <!-- hidden file input for camera -->
+      <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="parseWithAIPhoto(event)" />
+    </div>
+
+    <input type="hidden" id="edit-id" />
+
+    <div class="form-group">
+      <label>Recipe name *</label>
+      <input type="text" id="f-name" placeholder="e.g. Chicken Tikka Masala" />
+    </div>
+    <div class="form-group">
+      <label>Emoji (optional)</label>
+      <input type="text" id="f-emoji" placeholder="🍛" maxlength="2" />
+    </div>
+    <div class="form-group">
+      <label>Servings</label>
+      <input type="number" id="f-servings" placeholder="4" min="1" max="20" />
+    </div>
+    <div class="form-group">
+      <label>Source / link (optional)</label>
+      <input type="url" id="f-source" placeholder="https://pinchofnom.com/…" />
+    </div>
+    <div class="form-group">
+      <label>Tags (comma separated, optional)</label>
+      <input type="text" id="f-tags" placeholder="e.g. chicken, quick, syn-free" />
+    </div>
+
+    <div class="form-group">
+      <label>Ingredients</label>
+      <div id="ingredients-list"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addIngredientRow()">+ Add ingredient</button>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:8px">
+      <button class="btn btn-primary btn-full" onclick="saveRecipe()">Save Recipe</button>
+      <button class="btn btn-secondary" onclick="closeSheet('recipe-sheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// ██████╗  FIREBASE CONFIG — FILL THIS IN ██████╗
+// ════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyCbfUTqT8Vl7R9jpiCj49tt1BfNR36t_JA",
+  authDomain:        "nom-list.firebaseapp.com",
+  projectId:         "nom-list",
+  storageBucket:     "nom-list.firebasestorage.app",
+  messagingSenderId: "527631725563",
+  appId:             "1:527631725563:web:27983b17ff29e4cfe4915e"
+};
+// ════════════════════════════════════════════
+
+// ── State ──
+let db = null;
+let recipes = {};       // { id: recipeDoc }
+let weekPlan = {};      // { recipeId: true }
+let haveIt = {};        // { itemKey: true }
+let currentView = 'recipes';
+
+// ── Firebase init ──
+function initFirebase() {
+  if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
+    document.getElementById('config-warning').style.display = 'block';
+    toast('⚠️ Firebase not configured — using demo mode');
+    return;
+  }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    db.enablePersistence().catch(() => {}); // offline read cache
+    subscribeAll();
+  } catch (e) {
+    console.error('Firebase init failed', e);
+    toast('Firebase error — check console');
+  }
+}
+
+function subscribeAll() {
+  // Recipes
+  db.collection('recipes').orderBy('name').onSnapshot(snap => {
+    recipes = {};
+    snap.forEach(doc => recipes[doc.id] = { id: doc.id, ...doc.data() });
+    renderRecipes();
+    renderPlan();
+    renderShop();
+  });
+
+  // Week plan
+  db.collection('weekPlan').onSnapshot(snap => {
+    weekPlan = {};
+    snap.forEach(doc => weekPlan[doc.id] = true);
+    renderPlan();
+    renderShop();
+    updatePlanBadge();
+  });
+
+  // Have-it ticks
+  db.collection('haveIt').onSnapshot(snap => {
+    haveIt = {};
+    snap.forEach(doc => haveIt[doc.id] = true);
+    renderShop();
+  });
+}
+
+// ── View routing ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  document.getElementById('fab').classList.toggle('hidden', name !== 'recipes');
+  currentView = name;
+
+  if (name === 'plan') renderPlan();
+  if (name === 'shop') renderShop();
+}
+
+// ════════════════════════════════════════════
+// RECIPES VIEW
+// ════════════════════════════════════════════
+function renderRecipes() {
+  const search = document.getElementById('recipe-search').value.toLowerCase();
+  const list   = document.getElementById('recipe-list');
+  const count  = document.getElementById('recipe-count');
+  const all    = Object.values(recipes);
+  const filtered = all.filter(r =>
+    r.name.toLowerCase().includes(search) ||
+    (r.tags || []).some(t => t.toLowerCase().includes(search))
+  );
+
+  count.textContent = `${all.length} recipe${all.length !== 1 ? 's' : ''} saved`;
+
+  if (all.length === 0) {
+    list.innerHTML = `
+      <div class="empty">
+        <div class="emoji">🍽️</div>
+        <h2>No recipes yet</h2>
+        <p>Tap + to add your first recipe, or use AI to parse one from a website.</p>
+      </div>`;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="emoji">🔍</div><h2>No matches</h2><p>Try a different search.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(r => `
+    <div class="recipe-card ${weekPlan[r.id] ? 'in-plan' : ''}" onclick="togglePlan('${r.id}')">
+      <div class="recipe-emoji">${r.emoji || '🍽️'}</div>
+      <div class="recipe-info">
+        <div class="recipe-name">${esc(r.name)}</div>
+        <div class="recipe-meta">${r.servings ? r.servings + ' servings' : ''}${r.tags?.length ? ' · ' + r.tags.join(', ') : ''}</div>
+        ${weekPlan[r.id] ? '<span class="plan-badge">In this week ✓</span>' : ''}
+      </div>
+      <div class="recipe-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn" onclick="openEditRecipe('${r.id}')" title="Edit">✏️</button>
+        <button class="icon-btn" onclick="deleteRecipe('${r.id}')" title="Delete">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('recipe-search').addEventListener('input', renderRecipes);
+
+// ── Toggle recipe in/out of weekly plan ──
+async function togglePlan(id) {
+  if (!db) { toast('Firebase not connected'); return; }
+  if (weekPlan[id]) {
+    await db.collection('weekPlan').doc(id).delete();
+    toast('Removed from this week');
+  } else {
+    await db.collection('weekPlan').doc(id).set({ added: new Date() });
+    toast('Added to this week ✓');
+  }
+}
+
+function updatePlanBadge() {
+  const n = Object.keys(weekPlan).length;
+  document.getElementById('nav-plan').querySelector('.icon').textContent = n > 0 ? '📅' : '📅';
+  document.getElementById('plan-subtitle').textContent =
+    n === 0 ? 'No recipes selected' : `${n} recipe${n !== 1 ? 's' : ''} selected`;
+}
+
+// ════════════════════════════════════════════
+// PLAN VIEW
+// ════════════════════════════════════════════
+function renderPlan() {
+  const list   = document.getElementById('plan-list');
+  const empty  = document.getElementById('plan-empty');
+  const all    = Object.values(recipes);
+
+  if (all.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = all.map(r => `
+    <div class="recipe-card ${weekPlan[r.id] ? 'in-plan' : ''}" onclick="togglePlan('${r.id}')">
+      <div class="recipe-emoji">${r.emoji || '🍽️'}</div>
+      <div class="recipe-info">
+        <div class="recipe-name">${esc(r.name)}</div>
+        <div class="recipe-meta">${r.servings ? r.servings + ' servings' : ''}</div>
+      </div>
+      <div style="font-size:22px">${weekPlan[r.id] ? '✅' : '⬜'}</div>
+    </div>
+  `).join('');
+
+  updatePlanBadge();
+}
+
+// ════════════════════════════════════════════
+// SHOPPING LIST VIEW
+// ════════════════════════════════════════════
+function buildShoppingList() {
+  // Merge ingredients from all planned recipes
+  const merged = {}; // key → { name, qty, unit, recipeCount }
+
+  for (const id of Object.keys(weekPlan)) {
+    const recipe = recipes[id];
+    if (!recipe?.ingredients) continue;
+    for (const ing of recipe.ingredients) {
+      const key = normaliseKey(ing.name);
+      if (!merged[key]) {
+        merged[key] = { name: ing.name, qty: 0, unit: ing.unit || '', count: 0 };
+      }
+      merged[key].qty += parseFloat(ing.qty) || 0;
+      merged[key].count++;
+    }
+  }
+
+  return merged;
+}
+
+function normaliseKey(name) {
+  return name.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function renderShop() {
+  const list    = document.getElementById('shop-list');
+  const empty   = document.getElementById('shop-empty');
+  const controls = document.getElementById('shop-controls');
+  const merged  = buildShoppingList();
+  const items   = Object.entries(merged);
+
+  if (items.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    controls.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  controls.style.display = 'flex';
+
+  // Sort: unticked first, then alphabetical
+  items.sort(([ka], [kb]) => {
+    if (!!haveIt[ka] !== !!haveIt[kb]) return haveIt[ka] ? 1 : -1;
+    return ka.localeCompare(kb);
+  });
+
+  list.innerHTML = items.map(([key, item]) => `
+    <div class="shop-item ${haveIt[key] ? 'ticked' : ''}" id="item-${key}">
+      <button class="check-circle" onclick="toggleHaveIt('${key}')"></button>
+      <span class="item-name">${esc(item.name)}</span>
+      <span class="item-qty">${item.qty > 0 ? formatQty(item.qty) + (item.unit ? ' ' + item.unit : '') : ''}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('shop-subtitle').textContent =
+    `${items.filter(([k]) => !haveIt[k]).length} item${items.filter(([k]) => !haveIt[k]).length !== 1 ? 's' : ''} to buy`;
+}
+
+function formatQty(n) {
+  return n % 1 === 0 ? n : Math.round(n * 10) / 10;
+}
+
+async function toggleHaveIt(key) {
+  if (!db) { toast('Firebase not connected'); return; }
+  if (haveIt[key]) {
+    await db.collection('haveIt').doc(key).delete();
+  } else {
+    await db.collection('haveIt').doc(key).set({ ticked: new Date() });
+  }
+}
+
+async function clearTicks() {
+  if (!db) return;
+  const snap = await db.collection('haveIt').get();
+  const batch = db.batch();
+  snap.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+  toast('All ticks cleared');
+}
+
+async function clearWeekPlan() {
+  if (!db) return;
+  if (!confirm('Clear this week\'s plan?')) return;
+  const snap = await db.collection('weekPlan').get();
+  const batch = db.batch();
+  snap.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+  toast('Week plan cleared');
+}
+
+function copyList() {
+  const merged = buildShoppingList();
+  const lines = Object.entries(merged)
+    .filter(([k]) => !haveIt[k])
+    .map(([, item]) => `• ${item.name}${item.qty > 0 ? ' — ' + formatQty(item.qty) + (item.unit ? ' ' + item.unit : '') : ''}`);
+  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('Copied to clipboard 📋'));
+}
+
+// ════════════════════════════════════════════
+// ADD / EDIT RECIPE SHEET
+// ════════════════════════════════════════════
+function openAddRecipe() {
+  document.getElementById('sheet-title').textContent = 'Add Recipe';
+  document.getElementById('edit-id').value = '';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-emoji').value = '';
+  document.getElementById('f-servings').value = '';
+  document.getElementById('f-source').value = '';
+  document.getElementById('f-tags').value = '';
+  document.getElementById('ai-paste').value = '';
+  renderIngredientRows([]);
+  openSheet('recipe-sheet');
+}
+
+function openEditRecipe(id) {
+  const r = recipes[id];
+  if (!r) return;
+  document.getElementById('sheet-title').textContent = 'Edit Recipe';
+  document.getElementById('edit-id').value = id;
+  document.getElementById('f-name').value = r.name || '';
+  document.getElementById('f-emoji').value = r.emoji || '';
+  document.getElementById('f-servings').value = r.servings || '';
+  document.getElementById('f-source').value = r.source || '';
+  document.getElementById('f-tags').value = (r.tags || []).join(', ');
+  document.getElementById('ai-paste').value = '';
+  renderIngredientRows(r.ingredients || []);
+  openSheet('recipe-sheet');
+}
+
+function renderIngredientRows(ings) {
+  const el = document.getElementById('ingredients-list');
+  el.innerHTML = '';
+  if (ings.length === 0) { addIngredientRow(); return; }
+  ings.forEach(ing => addIngredientRow(ing));
+}
+
+function addIngredientRow(ing = {}) {
+  const row = document.createElement('div');
+  row.className = 'ingredient-row';
+  row.innerHTML = `
+    <input type="text" placeholder="e.g. chicken breast" value="${esc(ing.name || '')}" class="ing-name" />
+    <input type="number" placeholder="Qty" value="${ing.qty || ''}" class="ing-qty" min="0" step="0.1" />
+    <select class="ing-unit">
+      ${['', 'g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'handful', 'pinch', 'tin', 'pack', 'slice', 'clove', 'sprig'].map(u =>
+        `<option value="${u}" ${ing.unit === u ? 'selected' : ''}>${u || '—'}</option>`
+      ).join('')}
+    </select>
+    <button class="remove-ing" onclick="this.closest('.ingredient-row').remove()">×</button>
+  `;
+  document.getElementById('ingredients-list').appendChild(row);
+}
+
+function collectIngredients() {
+  return [...document.querySelectorAll('.ingredient-row')].map(row => ({
+    name: row.querySelector('.ing-name').value.trim(),
+    qty:  parseFloat(row.querySelector('.ing-qty').value) || 0,
+    unit: row.querySelector('.ing-unit').value
+  })).filter(i => i.name);
+}
+
+async function saveRecipe() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('Please enter a recipe name'); return; }
+  if (!db) { toast('Firebase not connected'); return; }
+
+  const data = {
+    name,
+    emoji:    document.getElementById('f-emoji').value.trim() || '🍽️',
+    servings: parseInt(document.getElementById('f-servings').value) || null,
+    source:   document.getElementById('f-source').value.trim() || null,
+    tags:     document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    ingredients: collectIngredients(),
+    updatedAt: new Date()
+  };
+
+  const id = document.getElementById('edit-id').value;
+  if (id) {
+    await db.collection('recipes').doc(id).update(data);
+    toast('Recipe updated ✓');
+  } else {
+    data.createdAt = new Date();
+    await db.collection('recipes').add(data);
+    toast('Recipe saved ✓');
+  }
+  closeSheet('recipe-sheet');
+}
+
+async function deleteRecipe(id) {
+  if (!confirm('Delete this recipe?')) return;
+  if (!db) return;
+  await db.collection('recipes').doc(id).delete();
+  await db.collection('weekPlan').doc(id).delete().catch(() => {});
+  toast('Recipe deleted');
+}
+
+// ════════════════════════════════════════════
+// AI RECIPE PARSING
+// ════════════════════════════════════════════
+async function parseWithAI() {
+  const text = document.getElementById('ai-paste').value.trim();
+  if (!text) { toast('Paste some recipe text first'); return; }
+
+  const apiKey = localStorage.getItem('openai_key');
+  if (!apiKey) {
+    toast('Set your OpenAI key in Settings first');
+    return;
+  }
+
+  const btn = document.getElementById('ai-btn-text');
+  btn.innerHTML = '<span class="spinner"></span> Parsing…';
+
+  try {
+    const prompt = `Extract this recipe into JSON. Return ONLY valid JSON with this exact structure:
+{
+  "name": "Recipe Name",
+  "emoji": "🍽️",
+  "servings": 4,
+  "source": "url if present or null",
+  "tags": ["tag1", "tag2"],
+  "ingredients": [
+    { "name": "ingredient name", "qty": 200, "unit": "g" }
+  ]
+}
+Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
+Recipe text:
+${text}`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2
+      })
+    });
+
+    if (!resp.ok) throw new Error(`OpenAI error: ${resp.status}`);
+    const json = await resp.json();
+    const parsed = JSON.parse(json.choices[0].message.content);
+
+    // Fill form
+    document.getElementById('f-name').value     = parsed.name || '';
+    document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
+    document.getElementById('f-servings').value = parsed.servings || '';
+    document.getElementById('f-source').value   = parsed.source || '';
+    document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
+    renderIngredientRows(parsed.ingredients || []);
+
+    document.getElementById('ai-paste').value = '';
+    toast('Recipe parsed! Review and save ✓');
+  } catch (e) {
+    console.error(e);
+    toast('AI parsing failed — check key or try again');
+  } finally {
+    btn.textContent = 'Parse with AI';
+  }
+}
+
+function triggerCameraCapture() {
+  const apiKey = localStorage.getItem('openai_key');
+  if (!apiKey) { toast('Set your OpenAI key in Settings first'); return; }
+  document.getElementById('camera-input').click();
+}
+
+async function parseWithAIPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const apiKey = localStorage.getItem('openai_key');
+  if (!apiKey) { toast('Set your OpenAI key in Settings first'); return; }
+
+  // Convert image to base64
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const base64 = e.target.result.split(',')[1];
+    const mimeType = file.type || 'image/jpeg';
+
+    const btn = document.getElementById('ai-btn-text');
+    btn.innerHTML = '<span class="spinner"></span> Scanning…';
+
+    try {
+      const prompt = `This is a photo of a recipe from a cookbook. Extract the recipe into JSON. Return ONLY valid JSON with this exact structure:
+{
+  "name": "Recipe Name",
+  "emoji": "🍽️",
+  "servings": 4,
+  "source": null,
+  "tags": ["tag1", "tag2"],
+  "ingredients": [
+    { "name": "ingredient name", "qty": 200, "unit": "g" }
+  ]
+}
+Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
+If you can't read a value clearly, make a sensible estimate. Always return valid JSON.`;
+
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } }
+            ]
+          }],
+          response_format: { type: 'json_object' },
+          temperature: 0.2
+        })
+      });
+
+      if (!resp.ok) throw new Error(`OpenAI error: ${resp.status}`);
+      const json = await resp.json();
+      const parsed = JSON.parse(json.choices[0].message.content);
+
+      // Fill form
+      document.getElementById('f-name').value     = parsed.name || '';
+      document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
+      document.getElementById('f-servings').value = parsed.servings || '';
+      document.getElementById('f-source').value   = parsed.source || '';
+      document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
+      renderIngredientRows(parsed.ingredients || []);
+
+      toast('Recipe scanned! Review and save ✓');
+    } catch (e) {
+      console.error(e);
+      toast('Photo scan failed — check key or try again');
+    } finally {
+      btn.textContent = 'Parse with AI';
+      // Reset file input so the same photo can be retried
+      event.target.value = '';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function setOpenAIKey() {
+  const current = localStorage.getItem('openai_key') ? '(already set)' : '';
+  const key = prompt(`Enter your OpenAI API key ${current}\n(starts with sk-...)`);
+  if (key?.startsWith('sk-')) {
+    localStorage.setItem('openai_key', key.trim());
+    toast('API key saved ✓');
+  } else if (key !== null) {
+    toast('Invalid key — must start with sk-');
+  }
+}
+
+// ════════════════════════════════════════════
+// SHEET HELPERS
+// ════════════════════════════════════════════
+function openSheet(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeSheetOnBackdrop(e, id) {
+  if (e.target === document.getElementById(id)) closeSheet(id);
+}
+
+// ── Toast ──
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Escape HTML ──
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Boot ──
+initFirebase();
+</script>
+
+<!-- Register service worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW registration failed', e));
+  });
+}
+</script>
+</body>
+</html>
