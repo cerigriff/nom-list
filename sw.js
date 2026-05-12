@@ -1,5 +1,5 @@
 // Nom List Service Worker — read cache strategy
-const CACHE = 'nom-list-v4';
+const CACHE = 'nom-list-v5';
 const PRECACHE = [
   '/',
   '/index.html',
