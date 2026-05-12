@@ -1,9 +1,9 @@
 // Nom List Service Worker — read cache strategy
-const CACHE = 'nom-list-v19';
+const CACHE = 'nom-list-v20';
 const PRECACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  '/nom-list/',
+  '/nom-list/index.html',
+  '/nom-list/manifest.json',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'
 ];
@@ -47,7 +47,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return resp;
-      }).catch(() => caches.match('/index.html')); // offline fallback
+      }).catch(() => caches.match('/nom-list/index.html')); // offline fallback
     })
   );
 });
