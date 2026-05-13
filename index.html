@@ -409,7 +409,7 @@
       <p id="plan-subtitle">Pick your meals for the week</p>
     </div>
     <div id="plan-controls" style="display:none; margin-bottom:12px;">
-      <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">Clear this week</button>
+      <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">🗑️ Clear this week</button>
     </div>
     <div id="plan-list"></div>
     <div id="plan-empty" class="empty" style="display:none">
@@ -426,7 +426,7 @@
     </div>
     <div class="shop-controls" id="shop-controls" style="display:none;">
       <button class="btn btn-secondary btn-sm" onclick="clearTicks()">Untick all</button>
-      <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list 📋</button>
     </div>
     <div id="shop-list"></div>
     <div id="shop-empty" class="empty" style="display:none">
@@ -458,7 +458,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.5</div>
+          <div class="setting-sub">Nom List v4.6</div>
         </div>
       </div>
     </div>
@@ -482,15 +482,15 @@
 
     <!-- AI paste section -->
     <div class="ai-box">
-      <h3>AI Recipe Entry</h3>
+      <h3>✨ AI Recipe Entry</h3>
       <p>Paste a recipe URL or any recipe text, or take a photo of a recipe book page.</p>
-      <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="3"></textarea>
+      <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="6"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="parseWithAI()">
           <span id="ai-btn-text">Send</span>
         </button>
         <button class="btn btn-secondary btn-sm" onclick="triggerCameraCapture()">
-          Scan recipe book
+          📷 Scan recipe book
         </button>
       </div>
       <!-- hidden file input for camera -->
@@ -506,7 +506,7 @@
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
         <div id="photo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--surface-2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text-3);overflow:hidden;flex-shrink:0">Photo</div>
         <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-input').click()">Take / choose photo</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-input').click()">📷 Take / choose photo</button>
           <button class="btn btn-secondary btn-sm" id="remove-photo-btn" style="display:none" onclick="removeRecipePhoto()">✕ Remove photo</button>
         </div>
       </div>
@@ -531,11 +531,11 @@
       <input type="number" id="f-calories" placeholder="e.g. 342" min="0" max="9999" />
     </div>
     <div class="form-group">
-      <label>Website URL (optional)</label>
+      <label>🔗 Website URL (optional)</label>
       <input type="url" id="f-source" placeholder="https://pinchofnom.com/…" />
     </div>
     <div class="form-group">
-      <label>Book reference (optional)</label>
+      <label>📖 Book reference (optional)</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="f-bookname" placeholder="Book name e.g. Pinch of Nom" style="flex:2" />
         <input type="number" id="f-bookpage" placeholder="Page" min="1" style="flex:0 0 80px" />
@@ -550,7 +550,7 @@
     <div class="form-group">
       <label>Instructions (optional)</label>
       <textarea id="f-instructions" placeholder="Method steps…" rows="6"></textarea>
-      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="triggerInstructionsScan()">Scan instructions page</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="triggerInstructionsScan()">📷 Scan instructions page</button>
       <input type="file" id="instructions-camera-input" accept="image/*" style="display:none" onchange="parseInstructionsPhoto(event)" />
     </div>
 
@@ -559,7 +559,7 @@
       <button class="btn btn-secondary" onclick="closeSheet('recipe-sheet')">Cancel</button>
     </div>
     <div id="delete-recipe-row" style="display:none; margin-top:12px; text-align:center">
-      <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">Delete this recipe</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
     </div>
   </div>
 </div>
@@ -573,7 +573,7 @@
     <div id="view-recipe-meta" style="margin-bottom:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"></div>
     <div class="view-recipe-refs" id="view-recipe-refs"></div>
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button class="btn btn-primary btn-sm" onclick="openEditFromView()">Edit recipe</button>
+      <button class="btn btn-primary btn-sm" onclick="openEditFromView()">✏️ Edit recipe</button>
       <button class="btn btn-secondary btn-sm" onclick="closeSheet('view-recipe-sheet')">Close</button>
     </div>
     <div class="view-tabs">
@@ -1032,7 +1032,7 @@ function copyList() {
   const lines = Object.entries(merged)
     .filter(([k]) => !haveIt[k])
     .map(([, item]) => `• ${item.name}${item.qty > 0 ? ' — ' + formatQty(item.qty) + (item.unit ? ' ' + item.unit : '') : ''}`);
-  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('Copied to clipboard'));
+  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('Copied to clipboard 📋'));
 }
 
 // ════════════════════════════════════════════
@@ -1201,7 +1201,7 @@ async function parseInstructionsPhoto(event) {
     const base64 = e.target.result.split(',')[1];
     const mimeType = file.type || 'image/jpeg';
 
-    toast('Scanning instructions…');
+    toast('📷 Scanning instructions…');
 
     try {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1513,7 +1513,7 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
 
 function updateApiKeyStatus() {
   const key = localStorage.getItem('openai_key');
-  document.getElementById('apiKeyStatus').textContent = key ? 'Key saved' : 'Not set';
+  document.getElementById('apiKeyStatus').textContent = key ? '🔑 Key saved' : '⚠️ Not set';
   const clearBtn = document.getElementById('clearKeyBtn');
   if (clearBtn) clearBtn.style.display = key ? 'inline-flex' : 'none';
   const input = document.getElementById('s-apikey');
