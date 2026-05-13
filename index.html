@@ -458,7 +458,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.7</div>
+          <div class="setting-sub">Nom List v4.8</div>
         </div>
       </div>
     </div>
@@ -740,8 +740,7 @@ function renderRecipes() {
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <div class="select-check" onclick="event.stopPropagation();toggleSelection('${r.id}')">${selected ? '✓' : ''}</div>
-        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openViewRecipe('${r.id}')">View</button>
-        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openEditRecipe('${r.id}')">✏️</button>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openViewRecipe('${r.id}')">Open</button>
       </div>
     </div>`;
   }).join('');
