@@ -289,6 +289,15 @@
     .setting-label { font-size: 15px; font-weight: 500; }
     .setting-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 
+    /* ── View Recipe sheet ── */
+    .view-recipe-photo { width: 100%; height: 200px; border-radius: var(--radius); object-fit: cover; margin-bottom: 16px; }
+    .view-recipe-emoji { width: 100%; height: 120px; background: var(--brand-light); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 64px; margin-bottom: 16px; }
+    .view-recipe-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .view-recipe-refs { margin-bottom: 16px; display: flex; flex-direction: column; gap: 4px; }
+    .view-recipe-instructions { font-size: 15px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+    .instructions-label { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .no-instructions { font-size: 14px; color: var(--text-3); font-style: italic; }
+
     /* ── Recipe reference pill (This Week tab) ── */
     .recipe-ref { font-size: 12px; color: var(--text-2); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
     .recipe-ref a { color: var(--brand); text-decoration: none; font-weight: 600; }
@@ -383,7 +392,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.6</div>
+          <div class="setting-sub">Nom List v3.7</div>
         </div>
       </div>
     </div>
@@ -487,6 +496,12 @@
       <div id="ingredients-list"></div>
       <button class="btn btn-ghost btn-sm" onclick="addIngredientRow()">+ Add ingredient</button>
     </div>
+    <div class="form-group">
+      <label>Instructions (optional)</label>
+      <textarea id="f-instructions" placeholder="Method steps…" rows="6"></textarea>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="triggerInstructionsScan()">📷 Scan instructions page</button>
+      <input type="file" id="instructions-camera-input" accept="image/*" style="display:none" onchange="parseInstructionsPhoto(event)" />
+    </div>
 
     <div style="display:flex; gap:8px; margin-top:8px">
       <button class="btn btn-primary btn-full" onclick="saveRecipe()">Save Recipe</button>
@@ -495,6 +510,22 @@
     <div id="delete-recipe-row" style="display:none; margin-top:12px; text-align:center">
       <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
     </div>
+  </div>
+</div>
+
+<!-- ── VIEW RECIPE SHEET ── -->
+<div class="sheet-backdrop" id="view-recipe-sheet" onclick="closeSheetOnBackdrop(event, 'view-recipe-sheet')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="view-recipe-photo-wrap"></div>
+    <div class="view-recipe-title" id="view-recipe-title"></div>
+    <div class="view-recipe-refs" id="view-recipe-refs"></div>
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <button class="btn btn-primary btn-sm" onclick="openEditFromView()">✏️ Edit recipe</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeSheet('view-recipe-sheet')">Close</button>
+    </div>
+    <div class="instructions-label">Method</div>
+    <div id="view-recipe-instructions"></div>
   </div>
 </div>
 
@@ -641,8 +672,9 @@ function renderRecipes() {
           <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (Original: ${r.servings})` : ''}</span>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;flex-shrink:0" onclick="event.stopPropagation()">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <div class="select-check" onclick="event.stopPropagation();toggleSelection('${r.id}')">${selected ? '✓' : ''}</div>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openViewRecipe('${r.id}')">View</button>
         <button class="icon-btn" style="font-size:16px;padding:4px 8px" onclick="event.stopPropagation();openEditRecipe('${r.id}')" title="Edit">✏️</button>
       </div>
     </div>`;
@@ -759,7 +791,7 @@ function renderPlan() {
       refHtml += `<div class="recipe-ref">📖 <span>${esc(r.bookName)}${page}</span></div>`;
     }
     return `
-    <div class="recipe-card in-plan">
+    <div class="recipe-card in-plan" onclick="openViewRecipe('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
@@ -963,6 +995,110 @@ function setPhotoPreview(dataUrl) {
   }
 }
 
+// ════════════════════════════════════════════
+// VIEW RECIPE SHEET
+// ════════════════════════════════════════════
+let viewingRecipeId = null;
+
+function openViewRecipe(id) {
+  const r = recipes[id];
+  if (!r) return;
+  viewingRecipeId = id;
+
+  // Photo or emoji
+  const photoWrap = document.getElementById('view-recipe-photo-wrap');
+  if (r.photo) {
+    photoWrap.innerHTML = `<img src="${r.photo}" class="view-recipe-photo" alt="" />`;
+  } else {
+    photoWrap.innerHTML = `<div class="view-recipe-emoji">${r.emoji || '🍽️'}</div>`;
+  }
+
+  // Title
+  document.getElementById('view-recipe-title').textContent = r.name;
+
+  // References
+  let refsHtml = '';
+  if (r.source) {
+    let label = r.source.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+    refsHtml += `<div class="recipe-ref">🔗 <a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(label)}</a></div>`;
+  }
+  if (r.bookName) {
+    const page = r.bookPage ? `, p.${r.bookPage}` : '';
+    refsHtml += `<div class="recipe-ref">📖 <span>${esc(r.bookName)}${page}</span></div>`;
+  }
+  document.getElementById('view-recipe-refs').innerHTML = refsHtml;
+
+  // Instructions
+  const instrEl = document.getElementById('view-recipe-instructions');
+  if (r.instructions && r.instructions.trim()) {
+    instrEl.innerHTML = `<div class="view-recipe-instructions">${esc(r.instructions)}</div>`;
+  } else {
+    instrEl.innerHTML = `<div class="no-instructions">No instructions saved yet — tap Edit to add them.</div>`;
+  }
+
+  openSheet('view-recipe-sheet');
+}
+
+function openEditFromView() {
+  closeSheet('view-recipe-sheet');
+  if (viewingRecipeId) openEditRecipe(viewingRecipeId);
+}
+
+// ── Instructions photo scan ──
+function triggerInstructionsScan() {
+  const apiKey = localStorage.getItem('openai_key');
+  if (!apiKey) { toast('Set your OpenAI key in Settings first'); return; }
+  document.getElementById('instructions-camera-input').click();
+}
+
+async function parseInstructionsPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const apiKey = localStorage.getItem('openai_key');
+  if (!apiKey) { toast('Set your OpenAI key in Settings first'); return; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const base64 = e.target.result.split(',')[1];
+    const mimeType = file.type || 'image/jpeg';
+
+    toast('📷 Scanning instructions…');
+
+    try {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: 'This is a photo of recipe instructions from a cookbook. Please transcribe the method/instructions exactly as written, preserving the original formatting (numbered steps, paragraphs, etc.). Return only the instructions text, nothing else.' },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } }
+            ]
+          }],
+          temperature: 0.1
+        })
+      });
+
+      if (!resp.ok) throw new Error(`OpenAI error: ${resp.status}`);
+      const json = await resp.json();
+      const text = json.choices[0].message.content.trim();
+
+      // Append to existing instructions in case multiple pages scanned
+      const existing = document.getElementById('f-instructions').value.trim();
+      document.getElementById('f-instructions').value = existing ? existing + '\n\n' + text : text;
+      toast('Instructions scanned ✓');
+    } catch (e) {
+      console.error(e);
+      toast('Scan failed — check key or try again');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
 function openAddRecipe() {
   document.getElementById('sheet-title').textContent = 'Add Recipe';
   document.getElementById('edit-id').value = '';
@@ -973,6 +1109,7 @@ function openAddRecipe() {
   document.getElementById('f-bookname').value = '';
   document.getElementById('f-bookpage').value = '';
   document.getElementById('f-tags').value = '';
+  document.getElementById('f-instructions').value = '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = '';
   document.getElementById('delete-recipe-row').style.display = 'none';
@@ -993,6 +1130,7 @@ function openEditRecipe(id) {
   document.getElementById('f-bookname').value = r.bookName || '';
   document.getElementById('f-bookpage').value = r.bookPage || '';
   document.getElementById('f-tags').value = (r.tags || []).join(', ');
+  document.getElementById('f-instructions').value = r.instructions || '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = r.photo || '';
   document.getElementById('delete-recipe-row').style.display = 'block';
@@ -1051,9 +1189,10 @@ async function saveRecipe() {
     emoji:    document.getElementById('f-emoji').value.trim() || '🍽️',
     servings: parseInt(document.getElementById('f-servings').value) || null,
     source:   document.getElementById('f-source').value.trim() || null,
-    bookName: document.getElementById('f-bookname').value.trim() || null,
-    bookPage: parseInt(document.getElementById('f-bookpage').value) || null,
-    tags:     document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    bookName:     document.getElementById('f-bookname').value.trim() || null,
+    bookPage:     parseInt(document.getElementById('f-bookpage').value) || null,
+    tags:         document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    instructions: document.getElementById('f-instructions').value.trim() || null,
     ingredients: collectIngredients(),
     photo:    photo,
     updatedAt: new Date()
@@ -1105,7 +1244,8 @@ async function parseWithAI() {
   "tags": ["tag1", "tag2"],
   "ingredients": [
     { "name": "ingredient name", "qty": 200, "unit": "g" }
-  ]
+  ],
+  "instructions": "Full method/steps as plain text, preserving original formatting and numbering. null if not present."
 }
 Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
 Recipe text:
@@ -1127,13 +1267,14 @@ ${text}`;
     const parsed = JSON.parse(json.choices[0].message.content);
 
     // Fill form
-    document.getElementById('f-name').value     = parsed.name || '';
-    document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
-    document.getElementById('f-servings').value = parsed.servings || '';
-    document.getElementById('f-source').value   = parsed.source || '';
-    document.getElementById('f-bookname').value = '';
-    document.getElementById('f-bookpage').value = '';
-    document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
+    document.getElementById('f-name').value         = parsed.name || '';
+    document.getElementById('f-emoji').value        = parsed.emoji || '🍽️';
+    document.getElementById('f-servings').value     = parsed.servings || '';
+    document.getElementById('f-source').value       = parsed.source || '';
+    document.getElementById('f-bookname').value     = '';
+    document.getElementById('f-bookpage').value     = '';
+    document.getElementById('f-tags').value         = (parsed.tags || []).join(', ');
+    document.getElementById('f-instructions').value = parsed.instructions || '';
     renderIngredientRows(parsed.ingredients || []);
 
     document.getElementById('ai-paste').value = '';
@@ -1178,7 +1319,8 @@ async function parseWithAIPhoto(event) {
   "tags": ["tag1", "tag2"],
   "ingredients": [
     { "name": "ingredient name", "qty": 200, "unit": "g" }
-  ]
+  ],
+  "instructions": "Full method/steps exactly as written, preserving original formatting and numbering. null if not visible in photo."
 }
 Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
 If you can't read a value clearly, make a sensible estimate. Always return valid JSON.`;
@@ -1205,14 +1347,14 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
       const parsed = JSON.parse(json.choices[0].message.content);
 
       // Fill form
-      document.getElementById('f-name').value     = parsed.name || '';
-      document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
-      document.getElementById('f-servings').value = parsed.servings || '';
-      document.getElementById('f-source').value   = parsed.source || '';
-      document.getElementById('f-bookname').value = '';
-      document.getElementById('f-bookpage').value = '';
-      document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
-      setSourceType('url');
+      document.getElementById('f-name').value         = parsed.name || '';
+      document.getElementById('f-emoji').value        = parsed.emoji || '🍽️';
+      document.getElementById('f-servings').value     = parsed.servings || '';
+      document.getElementById('f-source').value       = parsed.source || '';
+      document.getElementById('f-bookname').value     = '';
+      document.getElementById('f-bookpage').value     = '';
+      document.getElementById('f-tags').value         = (parsed.tags || []).join(', ');
+      document.getElementById('f-instructions').value = parsed.instructions || '';
       renderIngredientRows(parsed.ingredients || []);
 
       toast('Recipe scanned! Review and save ✓');
