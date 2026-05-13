@@ -71,7 +71,7 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .app-header-brand { display: flex; align-items: center; gap: 8px; }
-    .app-header-logo { font-size: 26px; line-height: 1; }
+    .app-header-logo { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; }
     .app-header-name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
     .app-header-name span { color: var(--brand); }
     .app-header-sub { font-size: 12px; color: var(--text-3); font-weight: 500; }
@@ -351,7 +351,7 @@
   <!-- ── TOP HEADER ── -->
   <header class="app-header">
     <div class="app-header-brand">
-      <span class="app-header-logo">🍽️</span>
+      <img src="icons/icon-192.png" class="app-header-logo" alt="" style="width:36px;height:36px;border-radius:8px;" />
       <div>
         <div class="app-header-name">Nom <span>List</span></div>
       </div>
@@ -442,7 +442,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.8</div>
+          <div class="setting-sub">Nom List v3.9</div>
         </div>
       </div>
     </div>
