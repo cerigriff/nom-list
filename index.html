@@ -458,7 +458,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.6</div>
+          <div class="setting-sub">Nom List v4.7</div>
         </div>
       </div>
     </div>
@@ -484,7 +484,7 @@
     <div class="ai-box">
       <h3>✨ AI Recipe Entry</h3>
       <p>Paste a recipe URL or any recipe text, or take a photo of a recipe book page.</p>
-      <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="6"></textarea>
+      <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" style="min-height:140px;resize:vertical"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="parseWithAI()">
           <span id="ai-btn-text">Send</span>
@@ -741,7 +741,7 @@ function renderRecipes() {
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <div class="select-check" onclick="event.stopPropagation();toggleSelection('${r.id}')">${selected ? '✓' : ''}</div>
         <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openViewRecipe('${r.id}')">View</button>
-        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openEditRecipe('${r.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openEditRecipe('${r.id}')">✏️</button>
       </div>
     </div>`;
   }).join('');
