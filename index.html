@@ -374,8 +374,11 @@
       <strong>⚠️ Firebase not configured</strong>
       Open index.html and fill in your Firebase config in the FIREBASE CONFIG section below.
     </div>
-    <div class="search-wrap">
-      <input type="text" id="recipe-search" placeholder="Search recipes…" />
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+      <div class="search-wrap" style="flex:1;margin-bottom:0">
+        <input type="text" id="recipe-search" placeholder="Search recipes…" />
+      </div>
+      <button class="btn btn-secondary btn-sm" id="randomise-btn" onclick="randomiseSelection()" style="flex-shrink:0;white-space:nowrap">🎲 Surprise me</button>
     </div>
     <div id="recipe-list"></div>
   </div>
@@ -435,7 +438,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.1</div>
+          <div class="setting-sub">Nom List v4.2</div>
         </div>
       </div>
     </div>
@@ -578,6 +581,7 @@ let haveIt = {};        // { itemKey: true }
 let scaledServings = {}; // { recipeId: number } — per-session serving overrides
 let currentView = 'recipes';
 let selectedRecipes = new Set(); // ids selected on Recipes page, cleared on nav away or after adding
+let lastRandomBatch = new Set(); // ids from the most recent randomise pick
 
 // ── Firebase init ──
 function initFirebase() {
@@ -654,6 +658,12 @@ function renderRecipes() {
   const list   = document.getElementById('recipe-list');
   const all    = Object.values(recipes);
   const filtered = all.filter(r => r.name.toLowerCase().includes(search));
+  // Float selected recipes to the top
+  filtered.sort((a, b) => {
+    const aSelected = selectedRecipes.has(a.id) ? 0 : 1;
+    const bSelected = selectedRecipes.has(b.id) ? 0 : 1;
+    return aSelected - bSelected;
+  });
 
   document.getElementById('recipe-count').textContent =
     `${all.length} recipe${all.length !== 1 ? 's' : ''}`;
@@ -730,6 +740,44 @@ function updateAddToWeekBar() {
   }
 }
 
+function randomiseSelection() {
+  const all = Object.values(recipes);
+  const TARGET = 7;
+
+  // If fewer than 7 total, just select them all
+  if (all.length <= TARGET) {
+    selectedRecipes = new Set(all.map(r => r.id));
+    lastRandomBatch = new Set(selectedRecipes);
+    updateAddToWeekBar();
+    renderRecipes();
+    toast(`${selectedRecipes.size} recipe${selectedRecipes.size !== 1 ? 's' : ''} selected 🎲`);
+    return;
+  }
+
+  // Split into "fresh" (not in last batch) and "used" (were in last batch)
+  const fresh = all.filter(r => !lastRandomBatch.has(r.id));
+  const used  = all.filter(r =>  lastRandomBatch.has(r.id));
+
+  // Shuffle helper
+  const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+  let picked = [];
+
+  if (fresh.length >= TARGET) {
+    // Plenty of fresh ones — pick entirely from fresh
+    picked = shuffle(fresh).slice(0, TARGET);
+  } else {
+    // Not enough fresh — take all fresh, top up with shuffled used
+    picked = [...shuffle(fresh), ...shuffle(used)].slice(0, TARGET);
+  }
+
+  selectedRecipes = new Set(picked.map(r => r.id));
+  lastRandomBatch = new Set(selectedRecipes);
+  updateAddToWeekBar();
+  renderRecipes();
+  toast('7 recipes selected 🎲');
+}
+
 async function addSelectionToWeek() {
   if (!db || selectedRecipes.size === 0) return;
   const batch = db.batch();
@@ -741,6 +789,7 @@ async function addSelectionToWeek() {
   await batch.commit();
   const n = selectedRecipes.size;
   selectedRecipes.clear();
+  lastRandomBatch.clear();
   updateAddToWeekBar();
   renderRecipes();
   toast(`Added to This Week ✓`);
