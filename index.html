@@ -172,13 +172,6 @@
     .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 6px; border-radius: 8px; }
     .icon-btn:active { background: var(--surface-2); }
 
-    /* ── Tag chips ── */
-    .tag-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-    .tag-chip {
-      font-size: 11px; font-weight: 600; color: var(--brand-dark);
-      background: var(--brand-light); border-radius: 50px;
-      padding: 2px 8px; white-space: nowrap;
-    }
 
     /* Serving scaler on card */
     .serving-scaler { display: flex; align-items: center; gap: 4px; margin-top: 5px; }
@@ -442,7 +435,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.9</div>
+          <div class="setting-sub">Nom List v4.0</div>
         </div>
       </div>
     </div>
@@ -520,10 +513,6 @@
         <input type="text" id="f-bookname" placeholder="Book name e.g. Pinch of Nom" style="flex:2" />
         <input type="number" id="f-bookpage" placeholder="Page" min="1" style="flex:0 0 80px" />
       </div>
-    </div>
-    <div class="form-group">
-      <label>Tags (comma separated, optional)</label>
-      <input type="text" id="f-tags" placeholder="e.g. chicken, quick, syn-free" />
     </div>
 
     <div class="form-group">
@@ -664,10 +653,7 @@ function renderRecipes() {
   const search = document.getElementById('recipe-search').value.toLowerCase();
   const list   = document.getElementById('recipe-list');
   const all    = Object.values(recipes);
-  const filtered = all.filter(r =>
-    r.name.toLowerCase().includes(search) ||
-    (r.tags || []).some(t => t.toLowerCase().includes(search))
-  );
+  const filtered = all.filter(r => r.name.toLowerCase().includes(search));
 
   document.getElementById('recipe-count').textContent =
     `${all.length} recipe${all.length !== 1 ? 's' : ''}`;
@@ -694,15 +680,11 @@ function renderRecipes() {
       : (r.emoji || '🍽️');
     const selected = selectedRecipes.has(r.id);
     const inPlan = !!weekPlan[r.id];
-    const tagChips = r.tags?.length
-      ? `<div class="tag-chips">${r.tags.map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>`
-      : '';
     return `
     <div class="recipe-card ${selected ? 'selected' : (inPlan ? 'in-plan' : '')}" onclick="toggleSelection('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
-        ${tagChips}
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
@@ -1146,7 +1128,6 @@ function openAddRecipe() {
   document.getElementById('f-source').value = '';
   document.getElementById('f-bookname').value = '';
   document.getElementById('f-bookpage').value = '';
-  document.getElementById('f-tags').value = '';
   document.getElementById('f-instructions').value = '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = '';
@@ -1167,7 +1148,6 @@ function openEditRecipe(id) {
   document.getElementById('f-source').value = r.source || '';
   document.getElementById('f-bookname').value = r.bookName || '';
   document.getElementById('f-bookpage').value = r.bookPage || '';
-  document.getElementById('f-tags').value = (r.tags || []).join(', ');
   document.getElementById('f-instructions').value = r.instructions || '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = r.photo || '';
@@ -1229,7 +1209,6 @@ async function saveRecipe() {
     source:   document.getElementById('f-source').value.trim() || null,
     bookName:     document.getElementById('f-bookname').value.trim() || null,
     bookPage:     parseInt(document.getElementById('f-bookpage').value) || null,
-    tags:         document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
     instructions: document.getElementById('f-instructions').value.trim() || null,
     ingredients: collectIngredients(),
     photo:    photo,
@@ -1311,7 +1290,6 @@ ${text}`;
     document.getElementById('f-source').value       = parsed.source || '';
     document.getElementById('f-bookname').value     = '';
     document.getElementById('f-bookpage').value     = '';
-    document.getElementById('f-tags').value         = (parsed.tags || []).join(', ');
     document.getElementById('f-instructions').value = parsed.instructions || '';
     renderIngredientRows(parsed.ingredients || []);
 
@@ -1391,8 +1369,7 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
       document.getElementById('f-source').value       = parsed.source || '';
       document.getElementById('f-bookname').value     = '';
       document.getElementById('f-bookpage').value     = '';
-      document.getElementById('f-tags').value         = (parsed.tags || []).join(', ');
-      document.getElementById('f-instructions').value = parsed.instructions || '';
+        document.getElementById('f-instructions').value = parsed.instructions || '';
       renderIngredientRows(parsed.ingredients || []);
 
       toast('Recipe scanned! Review and save ✓');
