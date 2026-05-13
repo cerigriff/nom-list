@@ -11,7 +11,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Nom List" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/nom-list/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/nom-list/icons/icon-512.png" />
 
   <!-- Firebase SDK (modular compat build) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -378,7 +379,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.0</div>
+          <div class="setting-sub">Nom List v3.2</div>
         </div>
       </div>
     </div>
@@ -686,7 +687,14 @@ async function togglePlan(id) {
   if (!db) { toast('Firebase not connected'); return; }
   if (weekPlan[id]) {
     await db.collection('weekPlan').doc(id).delete();
-    toast('Removed from this week');
+    // Clear all ticks so the shopping list starts fresh
+    const tickSnap = await db.collection('haveIt').get();
+    if (!tickSnap.empty) {
+      const batch = db.batch();
+      tickSnap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    }
+    toast('Removed from this week — shopping list reset');
   } else {
     await db.collection('weekPlan').doc(id).set({ added: new Date() });
     toast('Added to this week ✓');
@@ -849,9 +857,13 @@ async function clearTicks() {
 async function clearWeekPlan() {
   if (!db) return;
   if (!confirm('Clear this week\'s plan?')) return;
-  const snap = await db.collection('weekPlan').get();
+  const [planSnap, tickSnap] = await Promise.all([
+    db.collection('weekPlan').get(),
+    db.collection('haveIt').get()
+  ]);
   const batch = db.batch();
-  snap.forEach(doc => batch.delete(doc.ref));
+  planSnap.forEach(doc => batch.delete(doc.ref));
+  tickSnap.forEach(doc => batch.delete(doc.ref));
   await batch.commit();
   toast('Week plan cleared');
 }
