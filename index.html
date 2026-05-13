@@ -289,6 +289,16 @@
     .setting-label { font-size: 15px; font-weight: 500; }
     .setting-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 
+    /* ── Source type toggle ── */
+    .source-toggle { display: flex; gap: 0; margin-bottom: 10px; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--border); }
+    .source-toggle-btn { flex: 1; padding: 9px 12px; background: none; border: none; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-2); transition: background .15s, color .15s; }
+    .source-toggle-btn.active { background: var(--brand); color: white; }
+
+    /* ── Recipe reference pill (This Week tab) ── */
+    .recipe-ref { font-size: 12px; color: var(--text-2); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+    .recipe-ref a { color: var(--brand); text-decoration: none; font-weight: 600; }
+    .recipe-ref a:active { opacity: .7; }
+
     /* ── Config warning ── */
     #config-warning {
       background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius);
@@ -378,7 +388,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.4</div>
+          <div class="setting-sub">Nom List v3.5</div>
         </div>
       </div>
     </div>
@@ -462,8 +472,18 @@
       <div style="font-size:12px;color:var(--text-3);margin-top:4px">This is the original recipe yield. You can scale up/down on the recipe list.</div>
     </div>
     <div class="form-group">
-      <label>Source / link (optional)</label>
-      <input type="url" id="f-source" placeholder="https://pinchofnom.com/…" />
+      <label>Recipe source (optional)</label>
+      <div class="source-toggle">
+        <button type="button" class="source-toggle-btn active" id="src-btn-url" onclick="setSourceType('url')">🔗 Website / URL</button>
+        <button type="button" class="source-toggle-btn" id="src-btn-book" onclick="setSourceType('book')">📖 Book</button>
+      </div>
+      <div id="src-url-fields">
+        <input type="url" id="f-source" placeholder="https://pinchofnom.com/…" />
+      </div>
+      <div id="src-book-fields" style="display:none; gap:8px;">
+        <input type="text" id="f-bookname" placeholder="Book name e.g. Pinch of Nom" style="flex:2" />
+        <input type="number" id="f-bookpage" placeholder="Page" min="1" style="flex:0 0 80px" />
+      </div>
     </div>
     <div class="form-group">
       <label>Tags (comma separated, optional)</label>
@@ -736,11 +756,21 @@ function renderPlan() {
     const thumb = r.photo
       ? `<img src="${r.photo}" alt="" />`
       : (r.emoji || '🍽️');
+    // Build reference line
+    let refHtml = '';
+    if (r.sourceType === 'book' && r.bookName) {
+      const page = r.bookPage ? `, p.${r.bookPage}` : '';
+      refHtml = `<div class="recipe-ref">📖 <span>${esc(r.bookName)}${page}</span></div>`;
+    } else if (r.source) {
+      let label = r.source.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+      refHtml = `<div class="recipe-ref">🔗 <a href="${esc(r.source)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(label)}</a></div>`;
+    }
     return `
     <div class="recipe-card in-plan">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
+        ${refHtml}
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
@@ -940,6 +970,15 @@ function setPhotoPreview(dataUrl) {
   }
 }
 
+// ── Source type toggle ──
+function setSourceType(type) {
+  const isBook = type === 'book';
+  document.getElementById('src-btn-url').classList.toggle('active', !isBook);
+  document.getElementById('src-btn-book').classList.toggle('active', isBook);
+  document.getElementById('src-url-fields').style.display  = isBook ? 'none' : 'block';
+  document.getElementById('src-book-fields').style.display = isBook ? 'flex'  : 'none';
+}
+
 function openAddRecipe() {
   document.getElementById('sheet-title').textContent = 'Add Recipe';
   document.getElementById('edit-id').value = '';
@@ -947,10 +986,13 @@ function openAddRecipe() {
   document.getElementById('f-emoji').value = '';
   document.getElementById('f-servings').value = '';
   document.getElementById('f-source').value = '';
+  document.getElementById('f-bookname').value = '';
+  document.getElementById('f-bookpage').value = '';
   document.getElementById('f-tags').value = '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = '';
   document.getElementById('delete-recipe-row').style.display = 'none';
+  setSourceType('url');
   setPhotoPreview(null);
   renderIngredientRows([]);
   openSheet('recipe-sheet');
@@ -965,10 +1007,13 @@ function openEditRecipe(id) {
   document.getElementById('f-emoji').value = r.emoji || '';
   document.getElementById('f-servings').value = r.servings || '';
   document.getElementById('f-source').value = r.source || '';
+  document.getElementById('f-bookname').value = r.bookName || '';
+  document.getElementById('f-bookpage').value = r.bookPage || '';
   document.getElementById('f-tags').value = (r.tags || []).join(', ');
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = r.photo || '';
   document.getElementById('delete-recipe-row').style.display = 'block';
+  setSourceType(r.sourceType === 'book' ? 'book' : 'url');
   setPhotoPreview(r.photo || null);
   renderIngredientRows(r.ingredients || []);
   openSheet('recipe-sheet');
@@ -1019,15 +1064,19 @@ async function saveRecipe() {
   if (!db) { toast('Firebase not connected'); return; }
 
   const photo = document.getElementById('f-photo').value || null;
+  const isBook = document.getElementById('src-btn-book').classList.contains('active');
   const data = {
     name,
-    emoji:    document.getElementById('f-emoji').value.trim() || '🍽️',
-    servings: parseInt(document.getElementById('f-servings').value) || null,
-    source:   document.getElementById('f-source').value.trim() || null,
-    tags:     document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    emoji:      document.getElementById('f-emoji').value.trim() || '🍽️',
+    servings:   parseInt(document.getElementById('f-servings').value) || null,
+    sourceType: isBook ? 'book' : 'url',
+    source:     isBook ? null : (document.getElementById('f-source').value.trim() || null),
+    bookName:   isBook ? (document.getElementById('f-bookname').value.trim() || null) : null,
+    bookPage:   isBook ? (parseInt(document.getElementById('f-bookpage').value) || null) : null,
+    tags:       document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
     ingredients: collectIngredients(),
-    photo:    photo,
-    updatedAt: new Date()
+    photo:      photo,
+    updatedAt:  new Date()
   };
 
   const id = document.getElementById('edit-id').value;
@@ -1102,7 +1151,10 @@ ${text}`;
     document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
     document.getElementById('f-servings').value = parsed.servings || '';
     document.getElementById('f-source').value   = parsed.source || '';
+    document.getElementById('f-bookname').value = '';
+    document.getElementById('f-bookpage').value = '';
     document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
+    setSourceType('url');
     renderIngredientRows(parsed.ingredients || []);
 
     document.getElementById('ai-paste').value = '';
@@ -1178,7 +1230,10 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
       document.getElementById('f-emoji').value    = parsed.emoji || '🍽️';
       document.getElementById('f-servings').value = parsed.servings || '';
       document.getElementById('f-source').value   = parsed.source || '';
+      document.getElementById('f-bookname').value = '';
+      document.getElementById('f-bookpage').value = '';
       document.getElementById('f-tags').value     = (parsed.tags || []).join(', ');
+      setSourceType('url');
       renderIngredientRows(parsed.ingredients || []);
 
       toast('Recipe scanned! Review and save ✓');
