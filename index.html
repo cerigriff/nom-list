@@ -322,6 +322,26 @@
     .instructions-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
     .no-instructions { font-size: 14px; color: var(--text-3); font-style: italic; }
 
+    /* ── Calorie badge on recipe card ── */
+    .kcal-badge { font-size: 11px; font-weight: 600; color: var(--text-2); margin-top: 3px; }
+    .kcal-badge span { color: var(--brand-dark); font-weight: 700; }
+
+    /* ── View sheet tabs ── */
+    .view-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .view-tab-btn {
+      flex: 1; padding: 10px 4px; background: none; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: var(--text-3);
+      border-bottom: 2.5px solid transparent; transition: color .15s, border-color .15s;
+    }
+    .view-tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+    .view-tab-panel { display: none; }
+    .view-tab-panel.active { display: block; }
+
+    /* ── Ingredients list in view sheet ── */
+    .ing-list-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+    .ing-list-item:last-child { border-bottom: none; }
+    .ing-list-qty { font-weight: 600; color: var(--text-2); font-size: 13px; white-space: nowrap; margin-left: 12px; }
+
     /* ── Recipe reference ── */
     .recipe-ref { font-size: 12px; color: var(--text-2); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
     .recipe-ref a { color: var(--brand); text-decoration: none; font-weight: 600; }
@@ -378,7 +398,7 @@
       <div class="search-wrap" style="flex:1;margin-bottom:0">
         <input type="text" id="recipe-search" placeholder="Search recipes…" />
       </div>
-      <button class="btn btn-secondary btn-sm" id="randomise-btn" onclick="randomiseSelection()" style="flex-shrink:0;white-space:nowrap">🎲 Surprise me</button>
+      <button class="btn btn-secondary btn-sm" id="randomise-btn" onclick="randomiseSelection()" style="flex-shrink:0;white-space:nowrap">Surprise me</button>
     </div>
     <div id="recipe-list"></div>
   </div>
@@ -389,7 +409,7 @@
       <p id="plan-subtitle">Pick your meals for the week</p>
     </div>
     <div id="plan-controls" style="display:none; margin-bottom:12px;">
-      <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">🗑️ Clear this week</button>
+      <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">Clear this week</button>
     </div>
     <div id="plan-list"></div>
     <div id="plan-empty" class="empty" style="display:none">
@@ -406,7 +426,7 @@
     </div>
     <div class="shop-controls" id="shop-controls" style="display:none;">
       <button class="btn btn-secondary btn-sm" onclick="clearTicks()">Untick all</button>
-      <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list 📋</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list</button>
     </div>
     <div id="shop-list"></div>
     <div id="shop-empty" class="empty" style="display:none">
@@ -438,7 +458,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.3</div>
+          <div class="setting-sub">Nom List v4.5</div>
         </div>
       </div>
     </div>
@@ -462,7 +482,7 @@
 
     <!-- AI paste section -->
     <div class="ai-box">
-      <h3>✨ AI Recipe Entry</h3>
+      <h3>AI Recipe Entry</h3>
       <p>Paste a recipe URL or any recipe text, or take a photo of a recipe book page.</p>
       <textarea id="ai-paste" placeholder="Paste URL or recipe text here…" rows="3"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
@@ -470,7 +490,7 @@
           <span id="ai-btn-text">Send</span>
         </button>
         <button class="btn btn-secondary btn-sm" onclick="triggerCameraCapture()">
-          📷 Scan recipe book
+          Scan recipe book
         </button>
       </div>
       <!-- hidden file input for camera -->
@@ -484,9 +504,9 @@
     <div class="form-group">
       <label>Recipe photo</label>
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <div id="photo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--surface-2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0">📷</div>
+        <div id="photo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--surface-2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text-3);overflow:hidden;flex-shrink:0">Photo</div>
         <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-input').click()">📷 Take / choose photo</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('photo-input').click()">Take / choose photo</button>
           <button class="btn btn-secondary btn-sm" id="remove-photo-btn" style="display:none" onclick="removeRecipePhoto()">✕ Remove photo</button>
         </div>
       </div>
@@ -507,11 +527,15 @@
       <div style="font-size:12px;color:var(--text-3);margin-top:4px">This is the original recipe yield. You can scale up/down on the recipe list.</div>
     </div>
     <div class="form-group">
-      <label>🔗 Website URL (optional)</label>
+      <label>Calories per serving (optional)</label>
+      <input type="number" id="f-calories" placeholder="e.g. 342" min="0" max="9999" />
+    </div>
+    <div class="form-group">
+      <label>Website URL (optional)</label>
       <input type="url" id="f-source" placeholder="https://pinchofnom.com/…" />
     </div>
     <div class="form-group">
-      <label>📖 Book reference (optional)</label>
+      <label>Book reference (optional)</label>
       <div style="display:flex; gap:8px;">
         <input type="text" id="f-bookname" placeholder="Book name e.g. Pinch of Nom" style="flex:2" />
         <input type="number" id="f-bookpage" placeholder="Page" min="1" style="flex:0 0 80px" />
@@ -526,7 +550,7 @@
     <div class="form-group">
       <label>Instructions (optional)</label>
       <textarea id="f-instructions" placeholder="Method steps…" rows="6"></textarea>
-      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="triggerInstructionsScan()">📷 Scan instructions page</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="triggerInstructionsScan()">Scan instructions page</button>
       <input type="file" id="instructions-camera-input" accept="image/*" style="display:none" onchange="parseInstructionsPhoto(event)" />
     </div>
 
@@ -535,7 +559,7 @@
       <button class="btn btn-secondary" onclick="closeSheet('recipe-sheet')">Cancel</button>
     </div>
     <div id="delete-recipe-row" style="display:none; margin-top:12px; text-align:center">
-      <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">🗑️ Delete this recipe</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentRecipe()">Delete this recipe</button>
     </div>
   </div>
 </div>
@@ -546,13 +570,22 @@
     <div class="sheet-handle"></div>
     <div id="view-recipe-photo-wrap"></div>
     <div class="view-recipe-title" id="view-recipe-title"></div>
+    <div id="view-recipe-meta" style="margin-bottom:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"></div>
     <div class="view-recipe-refs" id="view-recipe-refs"></div>
-    <div style="display:flex;gap:8px;margin-bottom:20px">
-      <button class="btn btn-primary btn-sm" onclick="openEditFromView()">✏️ Edit recipe</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" onclick="openEditFromView()">Edit recipe</button>
       <button class="btn btn-secondary btn-sm" onclick="closeSheet('view-recipe-sheet')">Close</button>
     </div>
-    <div class="instructions-label">Method</div>
-    <div id="view-recipe-instructions"></div>
+    <div class="view-tabs">
+      <button class="view-tab-btn active" id="view-tab-ingredients" onclick="switchViewTab('ingredients')">Ingredients</button>
+      <button class="view-tab-btn" id="view-tab-method" onclick="switchViewTab('method')">Method</button>
+    </div>
+    <div class="view-tab-panel active" id="view-panel-ingredients">
+      <div id="view-recipe-ingredients"></div>
+    </div>
+    <div class="view-tab-panel" id="view-panel-method">
+      <div id="view-recipe-instructions"></div>
+    </div>
   </div>
 </div>
 
@@ -690,13 +723,14 @@ function renderRecipes() {
       : (r.emoji || '🍽️');
     const selected = selectedRecipes.has(r.id);
     const inPlan = !!weekPlan[r.id];
-    const inPlanBadge = inPlan && !selected ? `<div class="in-plan-badge">📋 This week</div>` : '';
+    const inPlanBadge = inPlan && !selected ? `<div class="in-plan-badge">This week</div>` : '';
     return `
     <div class="recipe-card ${selected ? 'selected' : (inPlan ? 'in-plan' : '')}" onclick="toggleSelection('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
         ${inPlanBadge}
+        ${r.calories ? `<div class="kcal-badge"><span>${r.calories}</span> kcal / serving</div>` : ''}
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
@@ -707,7 +741,7 @@ function renderRecipes() {
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <div class="select-check" onclick="event.stopPropagation();toggleSelection('${r.id}')">${selected ? '✓' : ''}</div>
         <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openViewRecipe('${r.id}')">View</button>
-        <button class="icon-btn" style="font-size:16px;padding:4px 8px" onclick="event.stopPropagation();openEditRecipe('${r.id}')" title="Edit">✏️</button>
+        <button class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();openEditRecipe('${r.id}')">Edit</button>
       </div>
     </div>`;
   }).join('');
@@ -752,7 +786,7 @@ function randomiseSelection() {
     lastRandomBatch = new Set(selectedRecipes);
     updateAddToWeekBar();
     renderRecipes();
-    toast(`${selectedRecipes.size} recipe${selectedRecipes.size !== 1 ? 's' : ''} selected 🎲`);
+    toast(`${selectedRecipes.size} recipe${selectedRecipes.size !== 1 ? 's' : ''} selected`);
     return;
   }
 
@@ -777,7 +811,7 @@ function randomiseSelection() {
   lastRandomBatch = new Set(selectedRecipes);
   updateAddToWeekBar();
   renderRecipes();
-  toast('7 recipes selected 🎲');
+  toast('7 recipes selected');
 }
 
 async function addSelectionToWeek() {
@@ -855,11 +889,11 @@ function renderPlan() {
     let refHtml = '';
     if (r.source) {
       let label = r.source.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
-      refHtml += `<div class="recipe-ref">🔗 <a href="${esc(r.source)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(label)}</a></div>`;
+      refHtml += `<div class="recipe-ref"><a href="${esc(r.source)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(label)}</a></div>`;
     }
     if (r.bookName) {
       const page = r.bookPage ? `, p.${r.bookPage}` : '';
-      refHtml += `<div class="recipe-ref">📖 <span>${esc(r.bookName)}${page}</span></div>`;
+      refHtml += `<div class="recipe-ref">${esc(r.bookName)}${page}</div>`;
     }
     return `
     <div class="recipe-card in-plan" onclick="openViewRecipe('${r.id}')">
@@ -998,7 +1032,7 @@ function copyList() {
   const lines = Object.entries(merged)
     .filter(([k]) => !haveIt[k])
     .map(([, item]) => `• ${item.name}${item.qty > 0 ? ' — ' + formatQty(item.qty) + (item.unit ? ' ' + item.unit : '') : ''}`);
-  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('Copied to clipboard 📋'));
+  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('Copied to clipboard'));
 }
 
 // ════════════════════════════════════════════
@@ -1051,7 +1085,7 @@ function handleRecipePhoto(event) {
 
 function removeRecipePhoto() {
   document.getElementById('f-photo').value = '';
-  document.getElementById('photo-preview').innerHTML = '📷';
+  document.getElementById('photo-preview').innerHTML = '<span style="font-size:11px;font-weight:600;color:var(--text-3)">Photo</span>';
   document.getElementById('remove-photo-btn').style.display = 'none';
 }
 
@@ -1087,27 +1121,61 @@ function openViewRecipe(id) {
   // Title
   document.getElementById('view-recipe-title').textContent = r.name;
 
+  // Meta row (servings + calories)
+  const scaled = getScaledServings(id);
+  let metaHtml = `<span style="font-size:13px;color:var(--text-2)">${scaled} serving${scaled !== 1 ? 's' : ''}</span>`;
+  if (r.calories) {
+    const scaledKcal = Math.round(r.calories * scaled / (r.servings || scaled));
+    metaHtml += `<span style="font-size:13px;font-weight:700;color:var(--brand-dark)">${scaledKcal} kcal total</span>`;
+    metaHtml += `<span style="font-size:12px;color:var(--text-3)">(${r.calories} kcal / serving)</span>`;
+  }
+  document.getElementById('view-recipe-meta').innerHTML = metaHtml;
+
   // References
   let refsHtml = '';
   if (r.source) {
     let label = r.source.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
-    refsHtml += `<div class="recipe-ref">🔗 <a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(label)}</a></div>`;
+    refsHtml += `<div class="recipe-ref"><a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(label)}</a></div>`;
   }
   if (r.bookName) {
     const page = r.bookPage ? `, p.${r.bookPage}` : '';
-    refsHtml += `<div class="recipe-ref">📖 <span>${esc(r.bookName)}${page}</span></div>`;
+    refsHtml += `<div class="recipe-ref">${esc(r.bookName)}${page}</div>`;
   }
   document.getElementById('view-recipe-refs').innerHTML = refsHtml;
 
-  // Instructions
+  // Ingredients tab (scaled)
+  const base = r.servings || scaled;
+  const factor = scaled / base;
+  const ingsEl = document.getElementById('view-recipe-ingredients');
+  if (r.ingredients?.length) {
+    ingsEl.innerHTML = (r.ingredients).map(ing => {
+      const qty = ing.qty ? formatQty((parseFloat(ing.qty) || 0) * factor) : '';
+      const unit = ing.unit || '';
+      const qtyStr = qty ? `${qty}${unit ? ' ' + unit : ''}` : (unit || '');
+      return `<div class="ing-list-item"><span>${esc(ing.name)}</span>${qtyStr ? `<span class="ing-list-qty">${esc(qtyStr)}</span>` : ''}</div>`;
+    }).join('');
+  } else {
+    ingsEl.innerHTML = `<div class="no-instructions">No ingredients saved yet.</div>`;
+  }
+
+  // Method tab
   const instrEl = document.getElementById('view-recipe-instructions');
   if (r.instructions && r.instructions.trim()) {
     instrEl.innerHTML = `<div class="view-recipe-instructions">${esc(r.instructions)}</div>`;
   } else {
-    instrEl.innerHTML = `<div class="no-instructions">No instructions saved yet — tap Edit to add them.</div>`;
+    instrEl.innerHTML = `<div class="no-instructions">No method saved yet — tap Edit to add it.</div>`;
   }
 
+  // Reset to ingredients tab
+  switchViewTab('ingredients');
   openSheet('view-recipe-sheet');
+}
+
+function switchViewTab(tab) {
+  ['ingredients', 'method'].forEach(t => {
+    document.getElementById(`view-tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`view-panel-${t}`).classList.toggle('active', t === tab);
+  });
 }
 
 function openEditFromView() {
@@ -1133,7 +1201,7 @@ async function parseInstructionsPhoto(event) {
     const base64 = e.target.result.split(',')[1];
     const mimeType = file.type || 'image/jpeg';
 
-    toast('📷 Scanning instructions…');
+    toast('Scanning instructions…');
 
     try {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1179,6 +1247,7 @@ function openAddRecipe() {
   document.getElementById('f-source').value = '';
   document.getElementById('f-bookname').value = '';
   document.getElementById('f-bookpage').value = '';
+  document.getElementById('f-calories').value = '';
   document.getElementById('f-instructions').value = '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = '';
@@ -1199,6 +1268,7 @@ function openEditRecipe(id) {
   document.getElementById('f-source').value = r.source || '';
   document.getElementById('f-bookname').value = r.bookName || '';
   document.getElementById('f-bookpage').value = r.bookPage || '';
+  document.getElementById('f-calories').value = r.calories || '';
   document.getElementById('f-instructions').value = r.instructions || '';
   document.getElementById('ai-paste').value = '';
   document.getElementById('f-photo').value = r.photo || '';
@@ -1260,6 +1330,7 @@ async function saveRecipe() {
     source:   document.getElementById('f-source').value.trim() || null,
     bookName:     document.getElementById('f-bookname').value.trim() || null,
     bookPage:     parseInt(document.getElementById('f-bookpage').value) || null,
+    calories:     parseInt(document.getElementById('f-calories').value) || null,
     instructions: document.getElementById('f-instructions').value.trim() || null,
     ingredients: collectIngredients(),
     photo:    photo,
@@ -1308,13 +1379,14 @@ async function parseWithAI() {
   "name": "Recipe Name",
   "emoji": "🍽️",
   "servings": 4,
+  "calories": 342,
   "source": "url if present or null",
-  "tags": ["tag1", "tag2"],
   "ingredients": [
     { "name": "ingredient name", "qty": 200, "unit": "g" }
   ],
   "instructions": "Full method/steps as plain text, preserving original formatting and numbering. null if not present."
 }
+calories should be per serving as an integer, or null if not stated.
 Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
 Recipe text:
 ${text}`;
@@ -1338,6 +1410,7 @@ ${text}`;
     document.getElementById('f-name').value         = parsed.name || '';
     document.getElementById('f-emoji').value        = parsed.emoji || '🍽️';
     document.getElementById('f-servings').value     = parsed.servings || '';
+    document.getElementById('f-calories').value     = parsed.calories || '';
     document.getElementById('f-source').value       = parsed.source || '';
     document.getElementById('f-bookname').value     = '';
     document.getElementById('f-bookpage').value     = '';
@@ -1382,13 +1455,14 @@ async function parseWithAIPhoto(event) {
   "name": "Recipe Name",
   "emoji": "🍽️",
   "servings": 4,
+  "calories": 342,
   "source": null,
-  "tags": ["tag1", "tag2"],
   "ingredients": [
     { "name": "ingredient name", "qty": 200, "unit": "g" }
   ],
   "instructions": "Full method/steps exactly as written, preserving original formatting and numbering. null if not visible in photo."
 }
+calories should be per serving as an integer, or null if not stated.
 Units must be one of: g, kg, ml, l, tsp, tbsp, cup, handful, pinch, tin, pack, slice, clove, sprig, or empty string.
 If you can't read a value clearly, make a sensible estimate. Always return valid JSON.`;
 
@@ -1417,10 +1491,11 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
       document.getElementById('f-name').value         = parsed.name || '';
       document.getElementById('f-emoji').value        = parsed.emoji || '🍽️';
       document.getElementById('f-servings').value     = parsed.servings || '';
+      document.getElementById('f-calories').value     = parsed.calories || '';
       document.getElementById('f-source').value       = parsed.source || '';
       document.getElementById('f-bookname').value     = '';
       document.getElementById('f-bookpage').value     = '';
-        document.getElementById('f-instructions').value = parsed.instructions || '';
+      document.getElementById('f-instructions').value = parsed.instructions || '';
       renderIngredientRows(parsed.ingredients || []);
 
       toast('Recipe scanned! Review and save ✓');
@@ -1438,7 +1513,7 @@ If you can't read a value clearly, make a sensible estimate. Always return valid
 
 function updateApiKeyStatus() {
   const key = localStorage.getItem('openai_key');
-  document.getElementById('apiKeyStatus').textContent = key ? '🔑 Key saved' : '⚠️ Not set';
+  document.getElementById('apiKeyStatus').textContent = key ? 'Key saved' : 'Not set';
   const clearBtn = document.getElementById('clearKeyBtn');
   if (clearBtn) clearBtn.style.display = key ? 'inline-flex' : 'none';
   const input = document.getElementById('s-apikey');
