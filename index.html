@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#ff6b6b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Nom List" />
   <link rel="apple-touch-icon" href="icon-192.png" />
 
@@ -19,7 +19,7 @@
 
   <style>
     /* ── Reset & tokens ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     :root {
       --brand:        #ff6b6b;
@@ -28,15 +28,17 @@
       --green:        #4caf82;
       --green-light:  #edfaf3;
       --surface:      #ffffff;
-      --surface-2:    #f7f7f8;
-      --border:       #ebebeb;
+      --surface-2:    #f4f4f6;
+      --border:       #e8e8ec;
       --text:         #1a1a1a;
       --text-2:       #6b6b6b;
       --text-3:       #a0a0a0;
       --radius:       14px;
       --radius-sm:    8px;
-      --shadow:       0 2px 12px rgba(0,0,0,.07);
-      --nav-h:        64px;
+      --shadow:       0 2px 8px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04);
+      --header-h:     56px;
+      --tab-h:        48px;
+      --safe-top:     env(safe-area-inset-top, 0px);
       --safe-bottom:  env(safe-area-inset-bottom, 0px);
     }
 
@@ -46,6 +48,8 @@
       background: var(--surface-2);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      overscroll-behavior: none;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -55,37 +59,51 @@
       -webkit-user-select: text;
     }
 
-    /* ── Layout ── */
+    /* ── App shell ── */
     #app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; }
 
-    .view { flex: 1; overflow-y: auto; padding: 16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px); display: none; }
+    /* ── Top header ── */
+    .app-header {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: calc(var(--safe-top) + 12px) 20px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .app-header-brand { display: flex; align-items: center; gap: 8px; }
+    .app-header-logo { font-size: 26px; line-height: 1; }
+    .app-header-name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+    .app-header-name span { color: var(--brand); }
+    .app-header-sub { font-size: 12px; color: var(--text-3); font-weight: 500; }
+
+    /* ── Top tabs ── */
+    .app-tabs {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+    }
+    .tab-btn {
+      flex: 1; padding: 0 4px;
+      height: var(--tab-h);
+      background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+      color: var(--text-3);
+      border-bottom: 2.5px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn .tab-icon { font-size: 18px; line-height: 1; }
+    .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+    /* ── Views ── */
+    .view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(var(--safe-bottom) + 80px); display: none; }
     .view.active { display: block; }
 
-    /* ── Bottom nav ── */
-    nav {
-      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%; max-width: 480px;
-      height: calc(var(--nav-h) + var(--safe-bottom));
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-      padding-bottom: var(--safe-bottom);
-      z-index: 100;
-    }
-    .nav-btn {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; gap: 4px;
-      background: none; border: none; cursor: pointer;
-      font-size: 11px; color: var(--text-3); padding: 0;
-      transition: color .15s;
-    }
-    .nav-btn .icon { font-size: 24px; line-height: 1; }
-    .nav-btn.active { color: var(--brand); }
-
-    /* ── Page header ── */
-    .page-header { margin-bottom: 20px; }
-    .page-header h1 { font-size: 26px; font-weight: 700; }
-    .page-header p { font-size: 14px; color: var(--text-2); margin-top: 4px; }
+    /* ── Section header (inside views) ── */
+    .section-header { margin-bottom: 16px; }
+    .section-header h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-3); }
+    .section-header p { font-size: 14px; color: var(--text-2); margin-top: 3px; }
 
     /* ── Cards ── */
     .card {
@@ -102,11 +120,11 @@
       padding: 12px 20px; border-radius: 50px; border: none;
       font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s;
     }
-    .btn:active { opacity: .8; }
+    .btn:active { opacity: .75; }
     .btn-primary { background: var(--brand); color: white; }
-    .btn-secondary { background: var(--surface-2); color: var(--text); }
+    .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
     .btn-ghost { background: none; color: var(--brand); padding: 8px 12px; }
-    .btn-danger { background: #fee; color: #c00; }
+    .btn-danger { background: #fee2e2; color: #c00; }
     .btn-sm { font-size: 13px; padding: 8px 14px; }
     .btn-full { width: 100%; }
 
@@ -127,28 +145,40 @@
 
     /* ── Search bar ── */
     .search-wrap { position: relative; margin-bottom: 16px; }
-    .search-wrap input { padding-left: 40px; }
+    .search-wrap input { padding-left: 40px; background: var(--surface); }
     .search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
 
     /* ── Recipe card ── */
     .recipe-card {
       background: var(--surface);
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 12px 14px;
       margin-bottom: 10px;
       box-shadow: var(--shadow);
       display: flex; align-items: center; gap: 14px;
       cursor: pointer; transition: transform .1s;
     }
     .recipe-card:active { transform: scale(.98); }
-    .recipe-thumb { flex-shrink: 0; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 36px; }
+    .recipe-thumb {
+      flex-shrink: 0; width: 62px; height: 62px; border-radius: 12px;
+      overflow: hidden; background: var(--brand-light);
+      display: flex; align-items: center; justify-content: center; font-size: 36px;
+    }
     .recipe-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .recipe-info { flex: 1; min-width: 0; }
     .recipe-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .recipe-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
     .recipe-actions { display: flex; gap: 4px; align-items: center; }
     .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 6px; border-radius: 8px; }
-    .icon-btn:hover { background: var(--surface-2); }
+    .icon-btn:active { background: var(--surface-2); }
+
+    /* ── Tag chips ── */
+    .tag-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .tag-chip {
+      font-size: 11px; font-weight: 600; color: var(--brand-dark);
+      background: var(--brand-light); border-radius: 50px;
+      padding: 2px 8px; white-space: nowrap;
+    }
 
     /* Serving scaler on card */
     .serving-scaler { display: flex; align-items: center; gap: 4px; margin-top: 5px; }
@@ -157,12 +187,12 @@
     .scaler-val { font-size: 12px; font-weight: 600; color: var(--text); min-width: 20px; text-align: center; }
     .scaler-base { font-size: 11px; color: var(--text-3); }
 
-    /* Plan toggle — subtle, just the thumb tint */
+    /* Plan toggle */
+    .recipe-card.in-plan { border-left: 3px solid var(--brand); }
     .recipe-card.in-plan .recipe-thumb { background: var(--brand-light); }
-    .plan-badge { font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 50px; margin-top: 4px; display: inline-block; }
 
     /* Selection mode */
-    .recipe-card.selected { border: 2px solid var(--green); background: var(--green-light); }
+    .recipe-card.selected { box-shadow: 0 0 0 2px var(--green), 0 2px 8px rgba(0,0,0,.06); background: var(--green-light); }
     .recipe-card.selected .recipe-thumb { background: var(--green-light); }
     .select-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--surface); transition: all .15s; }
     .recipe-card.selected .select-check { background: var(--green); border-color: var(--green); color: white; }
@@ -170,12 +200,12 @@
     /* Add-to-week floating bar */
     #add-to-week-bar {
       position: fixed;
-      bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+      bottom: calc(var(--safe-bottom) + 16px);
       left: 50%; transform: translateX(-50%);
       width: calc(100% - 32px); max-width: 448px;
       background: var(--green); color: white;
       border: none; border-radius: 50px;
-      padding: 14px 24px;
+      padding: 15px 24px;
       font-size: 16px; font-weight: 700;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(76,175,130,.45);
@@ -187,21 +217,20 @@
     #add-to-week-bar.visible { display: flex; }
 
     /* ── Shopping list ── */
-    .shop-category { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin: 16px 0 8px; }
     .shop-item {
       background: var(--surface);
       border-radius: var(--radius-sm);
       padding: 13px 16px;
       margin-bottom: 6px;
       display: flex; align-items: center; gap: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      box-shadow: var(--shadow);
       transition: opacity .2s;
     }
-    .shop-item.ticked { opacity: .4; }
+    .shop-item.ticked { opacity: .35; }
     .shop-item.ticked .item-name { text-decoration: line-through; }
     .shop-item.pending-tick {
       background: var(--green-light);
-      border: 1.5px solid var(--green);
+      box-shadow: 0 0 0 1.5px var(--green), 0 2px 8px rgba(0,0,0,.06);
       opacity: 1 !important;
     }
     .shop-item.pending-tick .item-name { text-decoration: none !important; }
@@ -217,18 +246,18 @@
     .shop-item.ticked .check-circle::after,
     .shop-item.pending-tick .check-circle::after { display: block; }
     .item-name { font-size: 15px; font-weight: 500; flex: 1; }
-    .item-qty { font-size: 13px; color: var(--text-2); }
+    .item-qty { font-size: 13px; color: var(--text-2); font-weight: 500; }
 
     /* ── Sheet (modal) ── */
     .sheet-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
       z-index: 200; display: none; align-items: flex-end;
     }
     .sheet-backdrop.open { display: flex; }
     .sheet {
       background: var(--surface); border-radius: 20px 20px 0 0;
       padding: 20px 20px calc(20px + var(--safe-bottom));
-      width: 100%; max-height: 90vh; overflow-y: auto;
+      width: 100%; max-height: 92vh; overflow-y: auto;
       animation: slideUp .25s ease;
     }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -243,23 +272,24 @@
     .remove-ing { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-3); padding: 10px 4px; }
 
     /* ── AI paste area ── */
-    .ai-box { background: var(--brand-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+    .ai-box { background: var(--brand-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255,107,107,.15); }
     .ai-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
     .ai-box p { font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
 
     /* ── Empty state ── */
     .empty { text-align: center; padding: 60px 20px; }
-    .empty .emoji { font-size: 56px; margin-bottom: 12px; }
+    .empty .emoji { font-size: 60px; margin-bottom: 16px; display: block; }
     .empty h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-    .empty p { font-size: 14px; color: var(--text-2); }
+    .empty p { font-size: 14px; color: var(--text-2); line-height: 1.5; }
 
     /* ── Toast ── */
     #toast {
-      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px); left: 50%; transform: translateX(-50%);
-      background: #222; color: white; padding: 10px 20px; border-radius: 50px;
+      position: fixed; bottom: calc(var(--safe-bottom) + 16px); left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; color: white; padding: 12px 20px; border-radius: 50px;
       font-size: 14px; font-weight: 500; z-index: 999;
       opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap;
       display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
     }
     #toast.show { opacity: 1; pointer-events: auto; }
     #toast-undo {
@@ -269,14 +299,15 @@
 
     /* ── FAB ── */
     .fab {
-      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px); right: 16px;
-      width: 56px; height: 56px; border-radius: 50%;
-      background: var(--brand); color: white; border: none;
-      font-size: 28px; cursor: pointer; box-shadow: 0 4px 16px rgba(255,107,107,.4);
+      position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px;
+      width: 58px; height: 58px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-dark)); color: white; border: none;
+      font-size: 28px; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(255,107,107,.45);
       display: flex; align-items: center; justify-content: center;
       z-index: 99; transition: transform .15s;
     }
-    .fab:active { transform: scale(.92); }
+    .fab:active { transform: scale(.91); }
     .fab.hidden { display: none; }
 
     /* ── Spinner ── */
@@ -290,36 +321,62 @@
     .setting-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 
     /* ── View Recipe sheet ── */
-    .view-recipe-photo { width: 100%; height: 200px; border-radius: var(--radius); object-fit: cover; margin-bottom: 16px; }
-    .view-recipe-emoji { width: 100%; height: 120px; background: var(--brand-light); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 64px; margin-bottom: 16px; }
-    .view-recipe-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .view-recipe-photo { width: 100%; height: 220px; border-radius: var(--radius); object-fit: cover; margin-bottom: 16px; }
+    .view-recipe-emoji { width: 100%; height: 130px; background: var(--brand-light); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 72px; margin-bottom: 16px; }
+    .view-recipe-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px; }
     .view-recipe-refs { margin-bottom: 16px; display: flex; flex-direction: column; gap: 4px; }
-    .view-recipe-instructions { font-size: 15px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
-    .instructions-label { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .view-recipe-instructions { font-size: 15px; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
+    .instructions-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
     .no-instructions { font-size: 14px; color: var(--text-3); font-style: italic; }
 
-    /* ── Recipe reference pill (This Week tab) ── */
+    /* ── Recipe reference ── */
     .recipe-ref { font-size: 12px; color: var(--text-2); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
     .recipe-ref a { color: var(--brand); text-decoration: none; font-weight: 600; }
     .recipe-ref a:active { opacity: .7; }
 
     /* ── Config warning ── */
     #config-warning {
-      background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius);
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--radius);
       padding: 14px; margin-bottom: 16px; font-size: 13px; display: none;
     }
     #config-warning strong { display: block; margin-bottom: 4px; }
+
+    /* ── Shop controls bar ── */
+    .shop-controls { display: flex; gap: 8px; margin-bottom: 14px; }
   </style>
 </head>
 <body>
 <div id="app">
 
+  <!-- ── TOP HEADER ── -->
+  <header class="app-header">
+    <div class="app-header-brand">
+      <span class="app-header-logo">🍽️</span>
+      <div>
+        <div class="app-header-name">Nom <span>List</span></div>
+      </div>
+    </div>
+    <div class="app-header-sub" id="recipe-count">Loading…</div>
+  </header>
+
+  <!-- ── TOP TABS ── -->
+  <nav class="app-tabs">
+    <button class="tab-btn active" onclick="showView('recipes')" id="nav-recipes">
+      <span class="tab-icon">📚</span>Recipes
+    </button>
+    <button class="tab-btn" onclick="showView('plan')" id="nav-plan">
+      <span class="tab-icon">📋</span>This Week
+    </button>
+    <button class="tab-btn" onclick="showView('shop')" id="nav-shop">
+      <span class="tab-icon">🛒</span>Shopping
+    </button>
+    <button class="tab-btn" onclick="showView('settings')" id="nav-settings">
+      <span class="tab-icon">⚙️</span>Settings
+    </button>
+  </nav>
+
   <!-- ── RECIPES VIEW ── -->
   <div class="view active" id="view-recipes">
-    <div class="page-header">
-      <h1>Recipes 📚</h1>
-      <p id="recipe-count">Loading…</p>
-    </div>
     <div id="config-warning">
       <strong>⚠️ Firebase not configured</strong>
       Open index.html and fill in your Firebase config in the FIREBASE CONFIG section below.
@@ -332,46 +389,39 @@
 
   <!-- ── PLAN VIEW ── -->
   <div class="view" id="view-plan">
-    <div class="page-header">
-      <h1>This Week 📋</h1>
-      <p id="plan-subtitle">Tap a recipe to add or remove it</p>
+    <div class="section-header">
+      <p id="plan-subtitle">Pick your meals for the week</p>
     </div>
     <div id="plan-controls" style="display:none; margin-bottom:12px;">
       <button class="btn btn-danger btn-sm" onclick="clearWeekPlan()">🗑️ Clear this week</button>
     </div>
     <div id="plan-list"></div>
     <div id="plan-empty" class="empty" style="display:none">
-      <div class="emoji">📭</div>
-      <h2>No recipes yet</h2>
-      <p>Add some recipes first, then pick your week's meals here.</p>
+      <span class="emoji">📭</span>
+      <h2>Nothing planned yet</h2>
+      <p>Head to Recipes, select some meals and tap "Add to This Week".</p>
     </div>
   </div>
 
   <!-- ── SHOPPING LIST VIEW ── -->
   <div class="view" id="view-shop">
-    <div class="page-header">
-      <h1>Shopping List 🛒</h1>
-      <p id="shop-subtitle">Tap to tick off what you have</p>
+    <div class="section-header">
+      <p id="shop-subtitle">Tap items to tick off what you already have</p>
     </div>
-    <div id="shop-controls" style="display:none; margin-bottom:12px; display:flex; gap:8px;">
+    <div class="shop-controls" id="shop-controls" style="display:none;">
       <button class="btn btn-secondary btn-sm" onclick="clearTicks()">Untick all</button>
       <button class="btn btn-secondary btn-sm" onclick="copyList()">Copy list 📋</button>
     </div>
     <div id="shop-list"></div>
     <div id="shop-empty" class="empty" style="display:none">
-      <div class="emoji">🧺</div>
-      <h2>Nothing here yet</h2>
-      <p>Select some recipes in the This Week tab to generate your list.</p>
+      <span class="emoji">🧺</span>
+      <h2>Your list is empty</h2>
+      <p>Add some recipes to This Week and your shopping list will appear here.</p>
     </div>
   </div>
 
   <!-- ── SETTINGS VIEW ── -->
   <div class="view" id="view-settings">
-    <div class="page-header">
-      <h1>Settings ⚙️</h1>
-    </div>
-
-    <!-- API Key card -->
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleApiKeySection()">
         <div>
@@ -388,31 +438,16 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:4px">
+    <div class="card">
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v3.7</div>
+          <div class="setting-sub">Nom List v3.8</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── BOTTOM NAV ── -->
-  <nav>
-    <button class="nav-btn active" onclick="showView('recipes')" id="nav-recipes">
-      <span class="icon">📚</span>Recipes
-    </button>
-    <button class="nav-btn" onclick="showView('plan')" id="nav-plan">
-      <span class="icon">📋</span>This Week
-    </button>
-    <button class="nav-btn" onclick="showView('shop')" id="nav-shop">
-      <span class="icon">🛒</span>Shopping List
-    </button>
-    <button class="nav-btn" onclick="showView('settings')" id="nav-settings">
-      <span class="icon">⚙️</span>Settings
-    </button>
-  </nav>
 </div>
 
 <!-- ── ADD TO WEEK BAR ── -->
@@ -609,7 +644,7 @@ async function subscribeAll() {
 // ── View routing ──
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
   // Show FAB and add-to-week bar only on recipes tab
@@ -628,14 +663,14 @@ function showView(name) {
 function renderRecipes() {
   const search = document.getElementById('recipe-search').value.toLowerCase();
   const list   = document.getElementById('recipe-list');
-  const count  = document.getElementById('recipe-count');
   const all    = Object.values(recipes);
   const filtered = all.filter(r =>
     r.name.toLowerCase().includes(search) ||
     (r.tags || []).some(t => t.toLowerCase().includes(search))
   );
 
-  count.textContent = `${all.length} recipe${all.length !== 1 ? 's' : ''} saved`;
+  document.getElementById('recipe-count').textContent =
+    `${all.length} recipe${all.length !== 1 ? 's' : ''}`;
 
   if (all.length === 0) {
     list.innerHTML = `
@@ -659,17 +694,20 @@ function renderRecipes() {
       : (r.emoji || '🍽️');
     const selected = selectedRecipes.has(r.id);
     const inPlan = !!weekPlan[r.id];
+    const tagChips = r.tags?.length
+      ? `<div class="tag-chips">${r.tags.map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>`
+      : '';
     return `
     <div class="recipe-card ${selected ? 'selected' : (inPlan ? 'in-plan' : '')}" onclick="toggleSelection('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
-        <div class="recipe-meta">${r.tags?.length ? r.tags.join(', ') : (inPlan ? '📋 In this week' : '')}</div>
+        ${tagChips}
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',1)">+</button>
-          <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (Original: ${r.servings})` : ''}</span>
+          <span class="scaler-base">servings${r.servings && r.servings !== scaled ? ` (orig: ${r.servings})` : ''}</span>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
@@ -747,7 +785,7 @@ async function togglePlan(id) {
 function updatePlanBadge() {
   const n = Object.keys(weekPlan).length;
   document.getElementById('plan-subtitle').textContent =
-    n === 0 ? 'Tap recipes to select them, then add to This Week' : `${n} recipe${n !== 1 ? 's' : ''} this week`;
+    n === 0 ? 'Pick your meals for the week' : `${n} recipe${n !== 1 ? 's' : ''} planned this week`;
 }
 
 // ════════════════════════════════════════════
@@ -857,7 +895,7 @@ function renderShop() {
     return;
   }
   empty.style.display = 'none';
-  controls.style.display = 'flex';
+  controls.style.display = '';
 
   // Sort: unticked first, then alphabetical
   items.sort(([ka], [kb]) => {
