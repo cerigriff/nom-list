@@ -181,8 +181,8 @@
     .scaler-base { font-size: 11px; color: var(--text-3); }
 
     /* Plan toggle */
-    .recipe-card.in-plan { border-left: 3px solid var(--brand); }
     .recipe-card.in-plan .recipe-thumb { background: var(--brand-light); }
+    .in-plan-badge { font-size: 11px; font-weight: 600; color: var(--brand-dark); background: var(--brand-light); border-radius: 50px; padding: 2px 8px; display: inline-block; margin-top: 4px; }
 
     /* Selection mode */
     .recipe-card.selected { box-shadow: 0 0 0 2px var(--green), 0 2px 8px rgba(0,0,0,.06); background: var(--green-light); }
@@ -438,7 +438,7 @@
       <div class="setting-row">
         <div>
           <div class="setting-label">App version</div>
-          <div class="setting-sub">Nom List v4.2</div>
+          <div class="setting-sub">Nom List v4.3</div>
         </div>
       </div>
     </div>
@@ -690,11 +690,13 @@ function renderRecipes() {
       : (r.emoji || '🍽️');
     const selected = selectedRecipes.has(r.id);
     const inPlan = !!weekPlan[r.id];
+    const inPlanBadge = inPlan && !selected ? `<div class="in-plan-badge">📋 This week</div>` : '';
     return `
     <div class="recipe-card ${selected ? 'selected' : (inPlan ? 'in-plan' : '')}" onclick="toggleSelection('${r.id}')">
       <div class="recipe-thumb">${thumb}</div>
       <div class="recipe-info">
         <div class="recipe-name">${esc(r.name)}</div>
+        ${inPlanBadge}
         <div class="serving-scaler" onclick="event.stopPropagation()">
           <button class="scaler-btn" onclick="event.stopPropagation();changeServings('${r.id}',-1)">−</button>
           <span class="scaler-val" data-scaler-id="${r.id}">${scaled}</span>
